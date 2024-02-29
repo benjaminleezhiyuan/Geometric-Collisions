@@ -42,7 +42,7 @@ void drawGrid() {
             glColor4f(static_cast<float>(rand()) / RAND_MAX,
                 static_cast<float>(rand()) / RAND_MAX,
                 static_cast<float>(rand()) / RAND_MAX,
-                alpha); // Alpha value set to 0.5 for half transparency
+                alpha); //Alpha value changes based on level of glitch.
 
             glVertex2f(i * squareSize, j * squareSize);
             glVertex2f(i * squareSize + squareSize, j * squareSize);
