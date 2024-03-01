@@ -2,13 +2,12 @@
 #include <GLFW/glfw3.h>
 #include <iostream>
 #include <cstdlib>
+#include <random>
 
 const int WIDTH = 1920;
 const int HEIGHT = 1080;
-const int GRID_SIZE = 100;
+const int GRID_SIZE = 250;
 float alpha{};
-
-
 
 // Keyboard callback function
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
@@ -22,6 +21,17 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
             if (alpha > 1.0f) alpha = 1.0f;
         }
     }
+}
+
+// Function to generate a random boolean value based on the given percentage
+bool randomize(float percentage) {
+    std::random_device rd;
+    std::mt19937 gen(rd());
+    std::uniform_int_distribution<> dis(1, 100);
+
+    float random_number = dis(gen); // Generate a random number between 1 and 100
+
+    return random_number <= percentage; // Return true if the random number is less than or equal to the specified percentage
 }
 
 void drawGrid() {
@@ -42,7 +52,7 @@ void drawGrid() {
             glColor4f(static_cast<float>(rand()) / RAND_MAX,
                 static_cast<float>(rand()) / RAND_MAX,
                 static_cast<float>(rand()) / RAND_MAX,
-                alpha); //Alpha value changes based on level of glitch.
+                randomize(5)); //Alpha value changes based on level of glitch.
 
             glVertex2f(i * squareSize, j * squareSize);
             glVertex2f(i * squareSize + squareSize, j * squareSize);
