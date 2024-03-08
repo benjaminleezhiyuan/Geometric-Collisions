@@ -16,6 +16,7 @@ const char* vertexShaderSource = R"(
     }
 )";
 
+
 // Fragment shader source code
 const char* fragmentShaderSource = R"(
 #version 330 core
@@ -35,18 +36,30 @@ void main() {
     // Convert angle to degrees
     angle = degrees(angle);
 
-    // Calculate the starting and ending angles for the sweeping effect
-    float startAngle = 0;             // Starting angle (bottom right of the clock)
-    float endAngle = radial; // Ending angle based on time (bottom left of the clock)
+    // Adjust angle to start from 0 to 360 degrees
+    angle = mod(angle + 360.0, 360.0);
+
+    // Define the start and end angles for the desired range
+    float startAngle = 156.0; // Starting angle (quadrant 4)
+    float endAngle = radial + startAngle;    // Ending angle (quadrant 1)
 
     // Normalize the angles to the range [0, 360]
-    angle = mod(angle + 360.0, 360.0);
     startAngle = mod(startAngle + 360.0, 360.0);
     endAngle = mod(endAngle + 360.0, 360.0);
 
-    // Discard fragments outside the desired angle range
-    if (angle <= startAngle || angle >= endAngle) {
-        discard;
+    // Handle cases where the start angle is greater than the end angle
+    if (startAngle > endAngle) {
+        // If start angle is greater than end angle, the range spans the discontinuity (e.g., 270° to 90°)
+        // So, we need to discard fragments outside this range
+        if (angle < startAngle && angle > endAngle) {
+            discard;
+        }
+    } else {
+        // If start angle is less than end angle, the range does not span the discontinuity (e.g., 90° to 270°)
+        // So, we discard fragments outside this range
+        if (angle < startAngle || angle > endAngle) {
+            discard;
+        }
     }
 
     // Inside the desired angle range, render the object
@@ -170,14 +183,14 @@ int main() {
         {
             // Increase crop value for X axis
             radial += 1.f;  // Adjust the step size as needed
-            radial = glm::clamp(radial, 0.0f, 359.9f);  // Clamp to the range [0.0, 1.0]
+            radial = glm::clamp(radial, 0.0f, 359.99f);  // Clamp to the range [0.0, 1.0]
         }
 
         if (glfwGetKey(window, GLFW_KEY_MINUS) == GLFW_PRESS)
         {
             // Decrease crop value for X axis
             radial -= 1.f;  // Adjust the step size as needed
-            radial = glm::clamp(radial, 0.0f, 359.9f);  // Clamp to the range [0.0, 1.0]
+            radial = glm::clamp(radial, 0.0f, 359.99f);  // Clamp to the range [0.0, 1.0]
         }
 
         // Clear the screen
@@ -197,7 +210,6 @@ int main() {
         glUniform1f(glGetUniformLocation(shaderProgram, "radius"), radius);
         glUniform1f(glGetUniformLocation(shaderProgram, "time"), normalizedTime);
         glUniform1f(glGetUniformLocation(shaderProgram, "radial"), radial);
-
 
         // Draw a full-screen quad
         glBindVertexArray(VAO);
