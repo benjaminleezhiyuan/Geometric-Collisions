@@ -26,6 +26,7 @@ out vec4 FragColor;
 uniform vec2 center;
 uniform float radial;
 uniform float startAngle;
+uniform bool clockwise; // Added variable for direction
 
 void main() {
     // Calculate angle of the current fragment
@@ -39,58 +40,33 @@ void main() {
     angle = mod(angle + 360.0, 360.0);
 
     // Define the start and end angles for the desired range
-    float startAngle = 200; 
+    float startAngle = 200;
     float endAngle;
-    bool clockwise = false;
-    if (clockwise) {
-        endAngle = startAngle - radial; // Adjust based on the direction
-    } else {
-        endAngle = startAngle + radial; // Adjust based on the direction
-    }
-
+    
+    endAngle = startAngle + radial; // Adjust based on the direction
+  
     // Normalize the angles to the range [0, 360]
     startAngle = mod(startAngle + 360.0, 360.0);
     endAngle = mod(endAngle + 360.0, 360.0);
 
     // Handle cases where the start angle is greater than the end angle
-if (startAngle > endAngle) {
-    // If start angle is greater than end angle, the range spans the discontinuity
-    // So, we need to discard fragments outside this range
-
-    if (clockwise) {
-        // Clockwise direction
-        if (angle > startAngle || angle < endAngle) {
-            discard;
-        }
-    } else {
-        // Counterclockwise direction
+    if (startAngle > endAngle) {
+        // If start angle is greater than end angle, the range spans the discontinuity
+        // So, we need to discard fragments outside this range
         if (angle < startAngle && angle > endAngle) {
             discard;
         }
-    }
-} else {
-    // If start angle is less than end angle, the range does not span the discontinuity
-    // So, we discard fragments outside this range
-
-    if (clockwise) {
-        // Clockwise direction
+    } else {
+        // If start angle is less than end angle, the range does not span the discontinuity
+        // So, we discard fragments outside this range
         if (angle < startAngle || angle > endAngle) {
             discard;
         }
-    } else {
-        // Counterclockwise direction
-        if (angle > startAngle && angle < endAngle) {
-            discard;
-        }
     }
-}
-
-    
 
     // Inside the desired angle range, render the object
     FragColor = vec4(0.26, 0.26, 0.67, 1.0); // Modify color as needed
 }
-
 
 )";
 
