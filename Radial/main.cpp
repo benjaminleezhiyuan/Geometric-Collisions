@@ -26,7 +26,6 @@ out vec4 FragColor;
 uniform vec2 center;
 uniform float radial;
 uniform float startAngle;
-uniform bool clockwise; // Added variable for direction
 
 void main() {
     // Calculate angle of the current fragment
@@ -42,24 +41,24 @@ void main() {
     // Define the start and end angles for the desired range
     float startAngle = 200;
     float endAngle;
-    
+
+    // Adjusting for the opposite direction
+    startAngle = startAngle - radial; // Adjust based on the direction
     endAngle = startAngle + radial; // Adjust based on the direction
-  
+
     // Normalize the angles to the range [0, 360]
     startAngle = mod(startAngle + 360.0, 360.0);
     endAngle = mod(endAngle + 360.0, 360.0);
 
-    // Handle cases where the start angle is greater than the end angle
-    if (startAngle > endAngle) {
-        // If start angle is greater than end angle, the range spans the discontinuity
-        // So, we need to discard fragments outside this range
-        if (angle < startAngle && angle > endAngle) {
+    // Handle cases where the end angle wraps around 360 degrees
+    if (endAngle < startAngle) {
+        // Discard fragments outside the specified angle range
+        if (!(angle >= startAngle || angle <= endAngle)) {
             discard;
         }
     } else {
-        // If start angle is less than end angle, the range does not span the discontinuity
-        // So, we discard fragments outside this range
-        if (angle < startAngle || angle > endAngle) {
+        // Discard fragments outside the specified angle range
+        if (!(angle >= startAngle && angle <= endAngle)) {
             discard;
         }
     }
