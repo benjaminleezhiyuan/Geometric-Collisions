@@ -29,9 +29,10 @@
   <PropertyGroup Label="Globals">
     <VCProjectVersion>16.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{44F7AEDF-B317-480D-99CA-71FBB6867B2B}</ProjectGuid>
+    <ProjectGuid>{23AC59A4-F314-43DC-9E29-3452E0B456B7}</ProjectGuid>
     <RootNamespace>Framework</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <ProjectName>Graphics</ProjectName>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
@@ -312,6 +313,9 @@ powershell Compress-Archive -Path "..\CGFW" -Update -DestinationPath ..\CGFW_$([
   <ItemGroup>
     <None Include="Framework.frag.glsl" />
     <None Include="Framework.vert.glsl" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="classes.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

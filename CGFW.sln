@@ -20,11 +20,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "common", "common", "{930B56
 		common\trianglemeshes.h = common\trianglemeshes.h
 	EndProjectSection
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Crop", "Framework\Framework.vcxproj", "{1BBF1EF5-F892-4BC1-B249-9172F591D9EF}"
-EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Radial", "Radial\Radial.vcxproj", "{23AC59A4-F314-43DC-9E29-3452E0B456B7}"
-EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Fade", "Fade\Fade.vcxproj", "{44F7AEDF-B317-480D-99CA-71FBB6867B2B}"
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Graphics", "Graphics\Graphics.vcxproj", "{23AC59A4-F314-43DC-9E29-3452E0B456B7}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -36,18 +32,6 @@ Global
 		Zip Release|x86 = Zip Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
-		{1BBF1EF5-F892-4BC1-B249-9172F591D9EF}.Debug|x64.ActiveCfg = Debug|x64
-		{1BBF1EF5-F892-4BC1-B249-9172F591D9EF}.Debug|x64.Build.0 = Debug|x64
-		{1BBF1EF5-F892-4BC1-B249-9172F591D9EF}.Debug|x86.ActiveCfg = Debug|Win32
-		{1BBF1EF5-F892-4BC1-B249-9172F591D9EF}.Debug|x86.Build.0 = Debug|Win32
-		{1BBF1EF5-F892-4BC1-B249-9172F591D9EF}.Release|x64.ActiveCfg = Release|x64
-		{1BBF1EF5-F892-4BC1-B249-9172F591D9EF}.Release|x64.Build.0 = Release|x64
-		{1BBF1EF5-F892-4BC1-B249-9172F591D9EF}.Release|x86.ActiveCfg = Release|Win32
-		{1BBF1EF5-F892-4BC1-B249-9172F591D9EF}.Release|x86.Build.0 = Release|Win32
-		{1BBF1EF5-F892-4BC1-B249-9172F591D9EF}.Zip Release|x64.ActiveCfg = Zip Release|x64
-		{1BBF1EF5-F892-4BC1-B249-9172F591D9EF}.Zip Release|x64.Build.0 = Zip Release|x64
-		{1BBF1EF5-F892-4BC1-B249-9172F591D9EF}.Zip Release|x86.ActiveCfg = Zip Release|Win32
-		{1BBF1EF5-F892-4BC1-B249-9172F591D9EF}.Zip Release|x86.Build.0 = Zip Release|Win32
 		{23AC59A4-F314-43DC-9E29-3452E0B456B7}.Debug|x64.ActiveCfg = Debug|x64
 		{23AC59A4-F314-43DC-9E29-3452E0B456B7}.Debug|x64.Build.0 = Debug|x64
 		{23AC59A4-F314-43DC-9E29-3452E0B456B7}.Debug|x86.ActiveCfg = Debug|Win32
@@ -60,18 +44,6 @@ Global
 		{23AC59A4-F314-43DC-9E29-3452E0B456B7}.Zip Release|x64.Build.0 = Zip Release|x64
 		{23AC59A4-F314-43DC-9E29-3452E0B456B7}.Zip Release|x86.ActiveCfg = Zip Release|Win32
 		{23AC59A4-F314-43DC-9E29-3452E0B456B7}.Zip Release|x86.Build.0 = Zip Release|Win32
-		{44F7AEDF-B317-480D-99CA-71FBB6867B2B}.Debug|x64.ActiveCfg = Debug|x64
-		{44F7AEDF-B317-480D-99CA-71FBB6867B2B}.Debug|x64.Build.0 = Debug|x64
-		{44F7AEDF-B317-480D-99CA-71FBB6867B2B}.Debug|x86.ActiveCfg = Debug|Win32
-		{44F7AEDF-B317-480D-99CA-71FBB6867B2B}.Debug|x86.Build.0 = Debug|Win32
-		{44F7AEDF-B317-480D-99CA-71FBB6867B2B}.Release|x64.ActiveCfg = Release|x64
-		{44F7AEDF-B317-480D-99CA-71FBB6867B2B}.Release|x64.Build.0 = Release|x64
-		{44F7AEDF-B317-480D-99CA-71FBB6867B2B}.Release|x86.ActiveCfg = Release|Win32
-		{44F7AEDF-B317-480D-99CA-71FBB6867B2B}.Release|x86.Build.0 = Release|Win32
-		{44F7AEDF-B317-480D-99CA-71FBB6867B2B}.Zip Release|x64.ActiveCfg = Zip Release|x64
-		{44F7AEDF-B317-480D-99CA-71FBB6867B2B}.Zip Release|x64.Build.0 = Zip Release|x64
-		{44F7AEDF-B317-480D-99CA-71FBB6867B2B}.Zip Release|x86.ActiveCfg = Zip Release|Win32
-		{44F7AEDF-B317-480D-99CA-71FBB6867B2B}.Zip Release|x86.Build.0 = Zip Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
