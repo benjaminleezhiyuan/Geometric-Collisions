@@ -14,6 +14,7 @@
     <ClCompile Include="..\common\trianglemeshes.cpp">
       <Filter>Misc</Filter>
     </ClCompile>
+    <ClCompile Include="helper.cpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Framework.frag.glsl">
@@ -30,5 +31,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="classes.h" />
+    <ClInclude Include="helper.h" />
   </ItemGroup>
 </Project>
