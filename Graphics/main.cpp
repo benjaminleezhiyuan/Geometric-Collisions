@@ -50,16 +50,42 @@ int main()
     glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     shader();
+
+    // Set up the scene objects
+    glm::vec3 initialPointCoords(0.0f, 0.0f, -5.f);
+    float sphereRadius = 1.0f;
+    glm::vec3 initialBoxCenter(0.0f, 0.0f, -5.0f);
+    glm::vec3 initialBoxHalfExtents(0.5f, 0.5f, 0.5f);
+    glm::vec4 planeNormal(0.0f, 1.0f, 0.0f, 0.0f);
+    float planeOffset = 0.0f;
+    Triangle triangle = {
+        glm::vec3(-1.0f, -1.0f, -5.f),
+        glm::vec3(1.0f, -1.0f, -5.f),
+        glm::vec3(0.0f, 1.0f, -5.f)
+    };
+
     while (!glfwWindowShouldClose(window))
     {
+        // Allow larger point size
+        glEnable(GL_PROGRAM_POINT_SIZE);
         // Input
         processInput(window);
 
-        SphereVsSphere(window, 1.0f, 0.5f);
+        //SphereVsSphere(window, sphereRadius, sphereRadius);
         
-        AABBvsSphere(window, 1.0f, glm::vec3(0.0f, 0.0f, -5.0f), glm::vec3(0.5f, 0.5f, 0.5f));
+        //AABBvsSphere(window, sphereRadius, initialBoxCenter, initialBoxHalfExtents);
 
-        AABBvsAABB(window, glm::vec3(0.0f, 0.0f, -5.0f), glm::vec3(0.5f, 0.5f, 0.5f), glm::vec3(0.0f, 0.0f, -5.0f), glm::vec3(0.5f, 0.5f, 0.5f));
+        //AABBvsAABB(window, initialBoxCenter, initialBoxHalfExtents, initialBoxCenter, initialBoxHalfExtents);
+
+        PointVsSphere(window, initialPointCoords, sphereRadius);
+
+        //PointVsAABB(window, initialPointCoords, initialBoxCenter, initialBoxHalfExtents);
+        
+        //PointVsPlane(window, initialPointCoords, planeNormal, planeOffset);
+
+        //PointVsTriangle(window, initialPointCoords, triangle);
+
+    
     }
 
     // Cleanup and terminate GLFW

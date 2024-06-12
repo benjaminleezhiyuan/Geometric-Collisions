@@ -12,10 +12,12 @@ void shader()
     uniform mat4 model;
     uniform mat4 view;
     uniform mat4 projection;
-
+    uniform float pointSize;
+    
     void main()
     {
         gl_Position = projection * view * model * vec4(aPos, 1.0);
+        gl_PointSize = 5.f;
     }
     )";
 
@@ -444,6 +446,459 @@ void AABBvsAABB(GLFWwindow* window, const glm::vec3& initialBox1Center, const gl
     glDeleteBuffers(1, &EBO);
 }
 
+void PointVsSphere(GLFWwindow* window, const glm::vec3& point, float radius)
+{
+    // Generate sphere data
+    std::vector<float> sphereVertices;
+    std::vector<unsigned int> sphereIndices;
+    generateSphere(sphereVertices, sphereIndices, radius, 36, 18);
+
+    GLuint VBO, VAO, EBO;
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
+    glGenBuffers(1, &EBO);
+
+    glBindVertexArray(VAO);
+
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, sphereVertices.size() * sizeof(float), sphereVertices.data(), GL_STATIC_DRAW);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sphereIndices.size() * sizeof(unsigned int), sphereIndices.data(), GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+
+    // Enable depth test
+    glEnable(GL_DEPTH_TEST);
+
+    // Projection matrix
+    int width, height;
+    glfwGetFramebufferSize(window, &width, &height);
+    glm::mat4 projection = glm::perspective(glm::radians(45.0f), static_cast<float>(width) / static_cast<float>(height), 0.1f, 100.0f);
+
+    Sphere sphere = { glm::vec3(0.f, 0.0f, -5.0f), radius };
+    Point point1 = { point };
+
+    // Render loop
+    while (!glfwWindowShouldClose(window))
+    {
+        // Input
+        processInput(window);
+
+        // Clear the color and depth buffer
+        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        // Use the shader program
+        glUseProgram(shaderProgram);
+
+        // View matrix
+        glm::mat4 view = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -3.0f));
+
+        // Set the projection and view matrix uniforms
+        GLint projectionLoc = glGetUniformLocation(shaderProgram, "projection");
+        glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
+
+        GLint viewLoc = glGetUniformLocation(shaderProgram, "view");
+        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+
+
+        // Animate the point and sphere moving left and right
+        float time = static_cast<float>(glfwGetTime());
+        point1.coordinates.x = sin(time) * 2.0f;
+        sphere.position.x = -sin(time) * 2.0f;
+
+        // Check for intersection
+        bool isInside = checkIntersection(point1, sphere);
+
+        // Draw sphere
+        glm::mat4 model = glm::translate(glm::mat4(1.0f), sphere.position);
+        glm::mat4 scale = glm::scale(glm::mat4(1.0f), glm::vec3(radius));
+        model = model * scale;
+        GLint modelLoc = glGetUniformLocation(shaderProgram, "model");
+        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+
+        GLint colorLoc = glGetUniformLocation(shaderProgram, "color");
+        glUniform3f(colorLoc, isInside ? 1.0f : 0.0f, isInside ? 0.0f : 1.0f, 0.0f);
+
+        glBindVertexArray(VAO);
+        glDrawElements(GL_LINE_LOOP, sphereIndices.size(), GL_UNSIGNED_INT, 0);
+
+        // Draw point
+        glm::mat4 pointModel = glm::translate(glm::mat4(1.0f), point1.coordinates);
+        pointModel = glm::scale(pointModel, glm::vec3(0.1f));
+        GLint pointModelLoc = glGetUniformLocation(shaderProgram, "model");
+        glUniformMatrix4fv(pointModelLoc, 1, GL_FALSE, glm::value_ptr(pointModel));
+
+        GLint pointColorLoc = glGetUniformLocation(shaderProgram, "color");
+        glUniform3f(pointColorLoc, isInside ? 1.0f : 0.0f, isInside ? 0.0f : 1.0f, 0.0f);
+
+        glBindVertexArray(VAO); // Unbind the VAO
+        glDrawArrays(GL_POINTS, 0, 1); // Draw the point
+
+        // Swap buffers and poll IO events
+        glfwSwapBuffers(window);
+        glfwPollEvents();
+    }
+
+    // Cleanup
+    glDeleteVertexArrays(1, &VAO);
+    glDeleteBuffers(1, &VBO);
+    glDeleteBuffers(1, &EBO);
+}
+
+void PointVsAABB(GLFWwindow* window, const glm::vec3& initialPointCoords, const glm::vec3& boxCenter, const glm::vec3& boxHalfExtents)
+{
+    // Generate AABB data
+    std::vector<float> boxVertices = {
+        -0.5f, -0.5f, -0.5f, // Bottom face
+         0.5f, -0.5f, -0.5f,
+         0.5f, -0.5f,  0.5f,
+        -0.5f, -0.5f,  0.5f,
+
+        -0.5f,  0.5f, -0.5f, // Top face
+         0.5f,  0.5f, -0.5f,
+         0.5f,  0.5f,  0.5f,
+        -0.5f,  0.5f,  0.5f,
+    };
+
+    std::vector<unsigned int> boxIndices = {
+        0, 1, 1, 2, 2, 3, 3, 0, // Bottom face
+        4, 5, 5, 6, 6, 7, 7, 4, // Top face
+        0, 4, 1, 5, 2, 6, 3, 7  // Connecting edges
+    };
+
+    GLuint VBO, VAO, EBO;
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
+    glGenBuffers(1, &EBO);
+
+    glBindVertexArray(VAO);
+
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, boxVertices.size() * sizeof(float), boxVertices.data(), GL_STATIC_DRAW);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, boxIndices.size() * sizeof(unsigned int), boxIndices.data(), GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+
+    // Enable depth test
+    glEnable(GL_DEPTH_TEST);
+
+    // Projection matrix
+    int width, height;
+    glfwGetFramebufferSize(window, &width, &height);
+    glm::mat4 projection = glm::perspective(glm::radians(45.0f), static_cast<float>(width) / static_cast<float>(height), 0.1f, 100.0f);
+
+    Point point = { initialPointCoords };
+    AABB box = { boxCenter - boxHalfExtents, boxCenter + boxHalfExtents, boxCenter, boxHalfExtents };
+
+    // Render loop
+    while (!glfwWindowShouldClose(window))
+    {
+        // Input
+        processInput(window);
+
+        // Clear the color and depth buffer
+        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        // Use the shader program
+        glUseProgram(shaderProgram);
+
+        // View matrix
+        glm::mat4 view = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -3.0f));
+
+        // Set the projection and view matrix uniforms
+        GLint projectionLoc = glGetUniformLocation(shaderProgram, "projection");
+        glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
+
+        GLint viewLoc = glGetUniformLocation(shaderProgram, "view");
+        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+
+        // Animate the point moving left and right
+        float time = static_cast<float>(glfwGetTime());
+        point.coordinates.x = sin(time) * 2.0f;
+        box.center.x = -sin(time) * 2.0f;
+        box.min = box.center - box.halfExtents;
+        box.max = box.center + box.halfExtents;
+
+        // Check for intersection
+        bool isInside = checkIntersection(point, box);
+
+        // Draw AABB
+        glm::mat4 model = glm::translate(glm::mat4(1.0f), box.center);
+        model = glm::scale(model, box.halfExtents * 2.0f);
+        GLint modelLoc = glGetUniformLocation(shaderProgram, "model");
+        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+
+        GLint colorLoc = glGetUniformLocation(shaderProgram, "color");
+        glUniform3f(colorLoc, isInside ? 1.0f : 0.0f, isInside ? 0.0f : 1.0f, 0.0f);
+
+        glBindVertexArray(VAO);
+        glDrawElements(GL_LINES, boxIndices.size(), GL_UNSIGNED_INT, 0);
+
+        // Draw point
+        glm::mat4 pointModel = glm::translate(glm::mat4(1.0f), point.coordinates);
+        pointModel = glm::scale(pointModel, glm::vec3(0.1f));
+        GLint pointModelLoc = glGetUniformLocation(shaderProgram, "model");
+        glUniformMatrix4fv(pointModelLoc, 1, GL_FALSE, glm::value_ptr(pointModel));
+
+        GLint pointColorLoc = glGetUniformLocation(shaderProgram, "color");
+        glUniform3f(pointColorLoc, isInside ? 1.0f : 0.0f, isInside ? 0.0f : 1.0f, 0.0f);
+
+        glDrawArrays(GL_POINTS, 0, 1); // Draw the point
+
+        // Swap buffers and poll IO events
+        glfwSwapBuffers(window);
+        glfwPollEvents();
+    }
+
+    // Cleanup
+    glDeleteVertexArrays(1, &VAO);
+    glDeleteBuffers(1, &VBO);
+    glDeleteBuffers(1, &EBO);
+}
+
+void PointVsPlane(GLFWwindow* window, const glm::vec3& initialPointCoords, const glm::vec3& planeNormal, float planeOffset)
+{
+    // Define the vertices and indices for a plane
+    std::vector<float> planeVertices = {
+        // Positions         // Colors
+        -5.0f, 0.0f, -20.0f,  0.0f, 1.0f, 0.0f,
+         5.0f, 0.0f, -20.0f,  0.0f, 1.0f, 0.0f,
+         5.0f, 0.0f,  0.0f,  0.0f, 1.0f, 0.0f,
+        -5.0f, 0.0f,  0.0f,  0.0f, 1.0f, 0.0f
+    };
+
+    std::vector<unsigned int> planeIndices = {
+        0, 1, 2,
+        2, 3, 0
+    };
+
+    GLuint VBO, VAO, EBO;
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
+    glGenBuffers(1, &EBO);
+
+    glBindVertexArray(VAO);
+
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, planeVertices.size() * sizeof(float), planeVertices.data(), GL_STATIC_DRAW);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, planeIndices.size() * sizeof(unsigned int), planeIndices.data(), GL_STATIC_DRAW);
+
+    // Set the vertex attribute pointers
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+
+    // Enable depth test
+    glEnable(GL_DEPTH_TEST);
+
+    // Projection matrix
+    int width, height;
+    glfwGetFramebufferSize(window, &width, &height);
+    glm::mat4 projection = glm::perspective(glm::radians(45.0f), static_cast<float>(width) / static_cast<float>(height), 0.1f, 100.0f);
+
+    Point point = { initialPointCoords };
+    Plane plane = { glm::vec4(planeNormal, planeOffset) };
+
+    // Render loop
+    while (!glfwWindowShouldClose(window))
+    {
+        // Input
+        processInput(window);
+
+        // Clear the color and depth buffer
+        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        // Use the shader program
+        glUseProgram(shaderProgram);
+
+        // View matrix
+        glm::mat4 view = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, -1.0f, -10.0f));
+
+        // Set the projection and view matrix uniforms
+        GLint projectionLoc = glGetUniformLocation(shaderProgram, "projection");
+        glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
+
+        GLint viewLoc = glGetUniformLocation(shaderProgram, "view");
+        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+
+        // Animate the point moving up and down
+        float time = static_cast<float>(glfwGetTime());
+        point.coordinates.y = sin(time) * 2.0f;
+
+        // Check for intersection
+        bool isIntersecting = checkIntersection(point, plane);
+
+        // Draw plane
+        glm::mat4 model = glm::mat4(1.0f);
+        GLint modelLoc = glGetUniformLocation(shaderProgram, "model");
+        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+
+        GLint colorLoc = glGetUniformLocation(shaderProgram, "color");
+        glUniform3f(colorLoc, isIntersecting ? 1.0f : 0.0f, isIntersecting ? 0.0f : 1.0f, 0.0f); // Red if intersecting, green otherwise
+
+        glBindVertexArray(VAO);
+        glDrawElements(GL_TRIANGLES, planeIndices.size(), GL_UNSIGNED_INT, 0);
+
+        // Draw point
+        glm::mat4 pointModel = glm::translate(glm::mat4(1.0f), point.coordinates);
+        pointModel = glm::scale(pointModel, glm::vec3(0.1f));
+        GLint pointModelLoc = glGetUniformLocation(shaderProgram, "model");
+        glUniformMatrix4fv(pointModelLoc, 1, GL_FALSE, glm::value_ptr(pointModel));
+
+        GLint pointColorLoc = glGetUniformLocation(shaderProgram, "color");
+        glUniform3f(pointColorLoc, 1.0f, 1.0f, 1.0f);
+
+        glDrawArrays(GL_POINTS, 0, 1); // Draw the point
+
+        // Swap buffers and poll IO events
+        glfwSwapBuffers(window);
+        glfwPollEvents();
+    }
+
+    // Cleanup
+    glDeleteVertexArrays(1, &VAO);
+    glDeleteBuffers(1, &VBO);
+    glDeleteBuffers(1, &EBO);
+}
+
+void PointVsTriangle(GLFWwindow* window, const glm::vec3& initialPointCoords, const Triangle& triangle)
+{
+    // Define the vertices and indices for a triangle
+    std::vector<float> triangleVertices = {
+        // Positions         // Colors
+        triangle.v1.x, triangle.v1.y, triangle.v1.z,  0.0f, 1.0f, 0.0f,
+        triangle.v2.x, triangle.v2.y, triangle.v2.z,  0.0f, 1.0f, 0.0f,
+        triangle.v3.x, triangle.v3.y, triangle.v3.z,  0.0f, 1.0f, 0.0f
+    };
+
+    std::vector<unsigned int> triangleIndices = {
+        0, 1, 2
+    };
+
+    GLuint VBO, VAO, EBO;
+    glGenVertexArrays(1, &VAO);
+    glGenBuffers(1, &VBO);
+    glGenBuffers(1, &EBO);
+
+    glBindVertexArray(VAO);
+
+    glBindBuffer(GL_ARRAY_BUFFER, VBO);
+    glBufferData(GL_ARRAY_BUFFER, triangleVertices.size() * sizeof(float), triangleVertices.data(), GL_STATIC_DRAW);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, triangleIndices.size() * sizeof(unsigned int), triangleIndices.data(), GL_STATIC_DRAW);
+
+    // Set the vertex attribute pointers
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+    glEnableVertexAttribArray(1);
+
+    glBindBuffer(GL_ARRAY_BUFFER, 0);
+    glBindVertexArray(0);
+
+    // Enable depth test
+    glEnable(GL_DEPTH_TEST);
+
+    // Projection matrix
+    int width, height;
+    glfwGetFramebufferSize(window, &width, &height);
+    glm::mat4 projection = glm::perspective(glm::radians(45.0f), static_cast<float>(width) / static_cast<float>(height), 0.1f, 100.0f);
+
+    Point point = { initialPointCoords };
+
+    // Render loop
+    while (!glfwWindowShouldClose(window))
+    {
+        // Input
+        processInput(window);
+
+        // Clear the color and depth buffer
+        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        // Use the shader program
+        glUseProgram(shaderProgram);
+
+        // View matrix
+        glm::mat4 view = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -10.0f));
+
+        GLint projectionLoc = glGetUniformLocation(shaderProgram, "projection");
+        glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
+
+        GLint viewLoc = glGetUniformLocation(shaderProgram, "view");
+        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+
+        // Animate the point moving up and down
+        float time = static_cast<float>(glfwGetTime());
+        point.coordinates.x = sin(time) * 2.0f;
+
+        // Rotate the triangle slowly
+        float rotationSpeed = 0.5f; // Adjust this value to control the speed
+        glm::mat4 rotation = glm::rotate(glm::mat4(1.0f), time * rotationSpeed, glm::vec3(0.0f, 0.0f, 1.0f)); // Rotate around y-axis
+        Triangle rotatedTriangle;
+        rotatedTriangle.v1 = glm::vec3(rotation * glm::vec4(triangle.v1, 1.0f));
+        rotatedTriangle.v2 = glm::vec3(rotation * glm::vec4(triangle.v2, 1.0f));
+        rotatedTriangle.v3 = glm::vec3(rotation * glm::vec4(triangle.v3, 1.0f));
+
+        // Check for intersection
+        bool isIntersecting = checkIntersection(point, rotatedTriangle);
+
+        // Draw triangle
+        glm::mat4 model = rotation;
+        GLint modelLoc = glGetUniformLocation(shaderProgram, "model");
+        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+
+        GLint colorLoc = glGetUniformLocation(shaderProgram, "color");
+        glUniform3f(colorLoc, isIntersecting ? 1.0f : 0.0f, isIntersecting ? 0.0f : 1.0f, 0.0f); // Red if intersecting, green otherwise
+
+        glBindVertexArray(VAO);
+        glDrawElements(GL_TRIANGLES, triangleIndices.size(), GL_UNSIGNED_INT, 0);
+
+        // Draw point
+        glm::mat4 pointModel = glm::translate(glm::mat4(1.0f), point.coordinates);
+        pointModel = glm::scale(pointModel, glm::vec3(0.1f));
+        GLint pointModelLoc = glGetUniformLocation(shaderProgram, "model");
+        glUniformMatrix4fv(pointModelLoc, 1, GL_FALSE, glm::value_ptr(pointModel));
+
+        GLint pointColorLoc = glGetUniformLocation(shaderProgram, "color");
+        glUniform3f(pointColorLoc, 1.0f, 1.0f, 1.0f);
+
+        glDrawArrays(GL_POINTS, 0, 1); // Draw the point
+
+        // Swap buffers and poll IO events
+        glfwSwapBuffers(window);
+        glfwPollEvents();
+    }
+
+    // Cleanup
+    glDeleteVertexArrays(1, &VAO);
+    glDeleteBuffers(1, &VBO);
+    glDeleteBuffers(1, &EBO);
+}
+
 void processInput(GLFWwindow* window)
 {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
@@ -528,4 +983,40 @@ bool checkIntersection(const AABB& box1, const AABB& box2)
     return (std::abs(box1.center.x - box2.center.x) <= (box1.halfExtents.x + box2.halfExtents.x)) &&
         (std::abs(box1.center.y - box2.center.y) <= (box1.halfExtents.y + box2.halfExtents.y)) &&
         (std::abs(box1.center.z - box2.center.z) <= (box1.halfExtents.z + box2.halfExtents.z));
+}
+
+bool checkIntersection(const Point& point, const Sphere& sphere) {
+    float distance = glm::distance(point.coordinates, sphere.position);
+    return distance <= sphere.radius;
+}
+
+bool checkIntersection(const Point& point, const AABB& box) {
+    return (point.coordinates.x >= box.min.x && point.coordinates.x <= box.max.x) &&
+        (point.coordinates.y >= box.min.y && point.coordinates.y <= box.max.y) &&
+        (point.coordinates.z >= box.min.z && point.coordinates.z <= box.max.z);
+}
+
+bool checkIntersection(const Point& point, const Plane& plane) {
+    // Plane equation: Ax + By + Cz + D = 0
+    // If point satisfies the plane equation (with a small epsilon tolerance), it's on the plane
+    float distance = glm::dot(plane.normal, glm::vec4(point.coordinates, 1.0f));
+    return glm::abs(distance) < 0.01f; // Epsilon tolerance
+}
+
+bool checkIntersection(const Point& point, const Triangle& triangle) {
+    glm::vec3 v0 = triangle.v3 - triangle.v1;
+    glm::vec3 v1 = triangle.v2 - triangle.v1;
+    glm::vec3 v2 = point.coordinates - triangle.v1;
+
+    float dot00 = glm::dot(v0, v0);
+    float dot01 = glm::dot(v0, v1);
+    float dot02 = glm::dot(v0, v2);
+    float dot11 = glm::dot(v1, v1);
+    float dot12 = glm::dot(v1, v2);
+
+    float invDenom = 1.0f / (dot00 * dot11 - dot01 * dot01);
+    float u = (dot11 * dot02 - dot01 * dot12) * invDenom;
+    float v = (dot00 * dot12 - dot01 * dot02) * invDenom;
+
+    return (u >= 0) && (v >= 0) && (u + v < 1);
 }
