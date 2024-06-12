@@ -49,14 +49,15 @@ int main()
     // Set the viewport
     glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
+    shader();
     while (!glfwWindowShouldClose(window))
     {
         // Input
         processInput(window);
 
-        //SphereVsSphere(window, 1.0f, 0.5f);
+        SphereVsSphere(window, 1.0f, 0.5f);
         
-        //AABBvsSphere(window, 1.0f, glm::vec3(0.0f, 0.0f, -5.0f), glm::vec3(0.5f, 0.5f, 0.5f));
+        AABBvsSphere(window, 1.0f, glm::vec3(0.0f, 0.0f, -5.0f), glm::vec3(0.5f, 0.5f, 0.5f));
 
         AABBvsAABB(window, glm::vec3(0.0f, 0.0f, -5.0f), glm::vec3(0.5f, 0.5f, 0.5f), glm::vec3(0.0f, 0.0f, -5.0f), glm::vec3(0.5f, 0.5f, 0.5f));
     }
