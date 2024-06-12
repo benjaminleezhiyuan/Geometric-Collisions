@@ -77,7 +77,7 @@ int main()
 
         //AABBvsAABB(window, initialBoxCenter, initialBoxHalfExtents, initialBoxCenter, initialBoxHalfExtents);
 
-        PointVsSphere(window, initialPointCoords, sphereRadius);
+        //PointVsSphere(window, initialPointCoords, sphereRadius);
 
         //PointVsAABB(window, initialPointCoords, initialBoxCenter, initialBoxHalfExtents);
         
@@ -85,7 +85,7 @@ int main()
 
         //PointVsTriangle(window, initialPointCoords, triangle);
 
-    
+
     }
 
     // Cleanup and terminate GLFW
