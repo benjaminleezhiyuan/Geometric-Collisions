@@ -17,6 +17,8 @@ void PointVsSphere(GLFWwindow* window, const glm::vec3& point, float radius);
 void PointVsAABB(GLFWwindow* window, const glm::vec3& initialPointCoords, const glm::vec3& boxCenter, const glm::vec3& boxHalfExtents);
 void PointVsPlane(GLFWwindow* window, const glm::vec3& initialPointCoords, const glm::vec3& planeNormal, float planeOffset);
 void PointVsTriangle(GLFWwindow* window, const glm::vec3& initialPointCoords, const Triangle& triangle);
+void PlaneVsAABB(GLFWwindow* window, const glm::vec3& planeNormal, float planeOffset, const glm::vec3& initialBoxCenter, const glm::vec3& initialBoxHalfExtents);
+void PlaneVsSphere(GLFWwindow* window, const glm::vec3& planeNormal, float planeOffset, float sphereRadius);
 
 
 
@@ -29,6 +31,8 @@ bool checkIntersection(const Point& point, const Sphere& sphere);
 bool checkIntersection(const Point& point, const AABB& box);
 bool checkIntersection(const Point& point, const Plane& plane);
 bool checkIntersection(const Point& point, const Triangle& triangle);
+bool checkIntersection(const Plane& plane, const AABB& box);
+bool checkIntersection(const Plane& plane, const Sphere& sphere);
 
 
 void generateSphere(std::vector<float>& vertices, std::vector<unsigned int>& indices, float radius, int sectorCount, int stackCount);

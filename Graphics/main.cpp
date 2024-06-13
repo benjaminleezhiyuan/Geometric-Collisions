@@ -85,7 +85,9 @@ int main()
 
         //PointVsTriangle(window, initialPointCoords, triangle);
 
+        //PlaneVsAABB(window, planeNormal, planeOffset, initialBoxCenter, initialBoxHalfExtents);
 
+        PlaneVsSphere(window, planeNormal, planeOffset, sphereRadius);
     }
 
     // Cleanup and terminate GLFW
