@@ -10,7 +10,7 @@
 
 
 void shader();
-void SphereVsSphere(GLFWwindow* window, float radius1, float radius2);
+void SphereVsSphere(GLFWwindow* window, float radius1, float radius2, const glm::vec3 position1, const glm::vec3 position2);
 void AABBvsSphere(GLFWwindow* window, float radius, const glm::vec3& initialBoxCenter, const glm::vec3& initialBoxHalfExtents);
 void AABBvsAABB(GLFWwindow* window, const glm::vec3& initialBox1Center, const glm::vec3& initialBox1HalfExtents, const glm::vec3& initialBox2Center, const glm::vec3& initialBox2HalfExtents); void processInput(GLFWwindow* window);
 void PointVsSphere(GLFWwindow* window, const glm::vec3& point, float radius);

@@ -112,7 +112,7 @@
     <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);C:\glfw\include;C:\glew\include;C:\glm</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);C:\glfw\include;C:\glew\include;C:\glm</IncludePath>
+    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);$(SolutionDir)\glfw\include;$(SolutionDir)\glew\include;$(SolutionDir)\glm;$(SolutionDir)\imgui-master;$(SolutionDir)\imgui-master\backends</IncludePath>
     <IntDir>$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Zip Release|x64'">
@@ -309,6 +309,13 @@ powershell Compress-Archive -Path "..\CGFW" -Update -DestinationPath ..\CGFW_$([
     <ClCompile Include="..\common\debug.cpp" />
     <ClCompile Include="..\common\program.cpp" />
     <ClCompile Include="..\common\trianglemeshes.cpp" />
+    <ClCompile Include="..\imgui-master\backends\imgui_impl_glfw.cpp" />
+    <ClCompile Include="..\imgui-master\backends\imgui_impl_opengl3.cpp" />
+    <ClCompile Include="..\imgui-master\imgui.cpp" />
+    <ClCompile Include="..\imgui-master\imgui_demo.cpp" />
+    <ClCompile Include="..\imgui-master\imgui_draw.cpp" />
+    <ClCompile Include="..\imgui-master\imgui_tables.cpp" />
+    <ClCompile Include="..\imgui-master\imgui_widgets.cpp" />
     <ClCompile Include="helper.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>

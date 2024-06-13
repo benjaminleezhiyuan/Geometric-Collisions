@@ -15,6 +15,27 @@
       <Filter>Misc</Filter>
     </ClCompile>
     <ClCompile Include="helper.cpp" />
+    <ClCompile Include="..\imgui-master\imgui.cpp">
+      <Filter>imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\imgui-master\imgui_demo.cpp">
+      <Filter>imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\imgui-master\imgui_draw.cpp">
+      <Filter>imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\imgui-master\backends\imgui_impl_glfw.cpp">
+      <Filter>imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\imgui-master\backends\imgui_impl_opengl3.cpp">
+      <Filter>imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\imgui-master\imgui_tables.cpp">
+      <Filter>imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="..\imgui-master\imgui_widgets.cpp">
+      <Filter>imgui</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <None Include="Framework.frag.glsl">
@@ -27,6 +48,9 @@
   <ItemGroup>
     <Filter Include="Misc">
       <UniqueIdentifier>{b55f3c87-ddc7-4307-a34e-7ee96e3d30d8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="imgui">
+      <UniqueIdentifier>{9c1c25e2-803c-4645-8f42-ac190f4973f8}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

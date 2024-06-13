@@ -75,7 +75,7 @@ void shader()
     glDeleteShader(fragmentShader);
 }
 
-void SphereVsSphere(GLFWwindow* window, float radius1, float radius2)
+void SphereVsSphere(GLFWwindow* window, float radius1, float radius2, const glm::vec3 position1, const glm::vec3 position2)
 {
     // Generate sphere data for the largest sphere
     std::vector<float> sphereVertices;
@@ -109,69 +109,60 @@ void SphereVsSphere(GLFWwindow* window, float radius1, float radius2)
     glfwGetFramebufferSize(window, &width, &height);
     glm::mat4 projection = glm::perspective(glm::radians(45.0f), static_cast<float>(width) / static_cast<float>(height), 0.1f, 100.0f);
 
-    Sphere sphere1 = { glm::vec3(0.f, 0.0f, -5.0f), radius1 };
-    Sphere sphere2 = { glm::vec3(0.f, 0.0f, -5.0f), radius2 };
+    Sphere sphere1 = { position1, radius1 };
+    Sphere sphere2 = { position2, radius2 };
 
-    // Render loop
-    while (!glfwWindowShouldClose(window))
-    {
-        // Clear the color and depth buffer
-        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    // Clear the color and depth buffer
+    glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        // Use the shader program
-        glUseProgram(shaderProgram);
+    // Use the shader program
+    glUseProgram(shaderProgram);
 
-        // View matrix
-        glm::mat4 view = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -3.0f));
+    // View matrix
+    glm::mat4 view = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -3.0f));
 
-        // Set the projection and view matrix uniforms
-        GLint projectionLoc = glGetUniformLocation(shaderProgram, "projection");
-        glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
+    // Set the projection and view matrix uniforms
+    GLint projectionLoc = glGetUniformLocation(shaderProgram, "projection");
+    glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
 
-        GLint viewLoc = glGetUniformLocation(shaderProgram, "view");
-        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+    GLint viewLoc = glGetUniformLocation(shaderProgram, "view");
+    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
 
-        // Animate the spheres moving left and right
-        float time = static_cast<float>(glfwGetTime());
-        sphere1.position.x = sin(time) * 2.0f;
-        sphere2.position.x = -sin(time) * 2.0f;
+    // Animate the spheres moving left and right
+    float time = static_cast<float>(glfwGetTime());
+    sphere1.position.x = sin(time) * 2.0f;
+    sphere2.position.x = -sin(time) * 2.0f;
 
-        // Check for intersection
-        bool intersecting = checkIntersection(sphere1, sphere2);
+    // Check for intersection
+    bool intersecting = checkIntersection(sphere1, sphere2);
 
-        // Draw sphere 1
-        glm::mat4 model1 = glm::translate(glm::mat4(1.0f), sphere1.position);
-        glm::mat4 scale1 = glm::scale(glm::mat4(1.0f), glm::vec3(radius1));
-        model1 = model1 * scale1;
-        GLint modelLoc1 = glGetUniformLocation(shaderProgram, "model");
-        glUniformMatrix4fv(modelLoc1, 1, GL_FALSE, glm::value_ptr(model1));
+    // Draw sphere 1
+    glm::mat4 model1 = glm::translate(glm::mat4(1.0f), sphere1.position);
+    glm::mat4 scale1 = glm::scale(glm::mat4(1.0f), glm::vec3(radius1));
+    model1 = model1 * scale1;
+    GLint modelLoc1 = glGetUniformLocation(shaderProgram, "model");
+    glUniformMatrix4fv(modelLoc1, 1, GL_FALSE, glm::value_ptr(model1));
 
-        GLint colorLoc1 = glGetUniformLocation(shaderProgram, "color");
-        glUniform3f(colorLoc1, intersecting ? 1.0f : 0.0f, intersecting ? 0.0f : 1.0f, 0.0f);
+    GLint colorLoc1 = glGetUniformLocation(shaderProgram, "color");
+    glUniform3f(colorLoc1, intersecting ? 1.0f : 0.0f, intersecting ? 0.0f : 1.0f, 0.0f);
 
-        glBindVertexArray(VAO);
-        glDrawElements(GL_LINE_LOOP, sphereIndices.size(), GL_UNSIGNED_INT, 0);
+    glBindVertexArray(VAO);
+    glDrawElements(GL_LINES, sphereIndices.size(), GL_UNSIGNED_INT, 0);
 
-        // Draw sphere 2
-        glm::mat4 model2 = glm::translate(glm::mat4(1.0f), sphere2.position);
-        glm::mat4 scale2 = glm::scale(glm::mat4(1.0f), glm::vec3(radius2));
-        model2 = model2 * scale2;
-        GLint modelLoc2 = glGetUniformLocation(shaderProgram, "model");
-        glUniformMatrix4fv(modelLoc2, 1, GL_FALSE, glm::value_ptr(model2));
+    // Draw sphere 2
+    glm::mat4 model2 = glm::translate(glm::mat4(1.0f), sphere2.position);
+    glm::mat4 scale2 = glm::scale(glm::mat4(1.0f), glm::vec3(radius2));
+    model2 = model2 * scale2;
+    GLint modelLoc2 = glGetUniformLocation(shaderProgram, "model");
+    glUniformMatrix4fv(modelLoc2, 1, GL_FALSE, glm::value_ptr(model2));
 
-        GLint colorLoc2 = glGetUniformLocation(shaderProgram, "color");
-        glUniform3f(colorLoc2, intersecting ? 1.0f : 0.0f, intersecting ? 0.0f : 1.0f, 0.0f);
+    GLint colorLoc2 = glGetUniformLocation(shaderProgram, "color");
+    glUniform3f(colorLoc2, intersecting ? 1.0f : 0.0f, intersecting ? 0.0f : 1.0f, 0.0f);
 
-        glBindVertexArray(VAO);
-        glDrawElements(GL_LINES, sphereIndices.size(), GL_UNSIGNED_INT, 0);
+    glBindVertexArray(VAO);
+    glDrawElements(GL_LINES, sphereIndices.size(), GL_UNSIGNED_INT, 0);
 
-        // Swap buffers and poll IO events
-        glfwSwapBuffers(window);
-        glfwPollEvents();
-    }
-
-    // Cleanup
     glDeleteVertexArrays(1, &VAO);
     glDeleteBuffers(1, &VBO);
     glDeleteBuffers(1, &EBO);
@@ -214,9 +205,7 @@ void AABBvsSphere(GLFWwindow* window, float radius, const glm::vec3& initialBoxC
     Sphere sphere = { glm::vec3(0.f, 0.0f, -5.0f), radius };
     AABB box = { initialBoxCenter - initialBoxHalfExtents, initialBoxCenter + initialBoxHalfExtents, initialBoxCenter, initialBoxHalfExtents };
 
-    // Render loop
-    while (!glfwWindowShouldClose(window))
-    {
+    
         // Clear the color and depth buffer
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -258,7 +247,7 @@ void AABBvsSphere(GLFWwindow* window, float radius, const glm::vec3& initialBoxC
         glUniform3f(colorLoc1, intersecting ? 1.0f : 0.0f, intersecting ? 0.0f : 1.0f, 0.0f);
 
         glBindVertexArray(VAO);
-        glDrawElements(GL_LINE_LOOP, sphereIndices.size(), GL_UNSIGNED_INT, 0);
+        glDrawElements(GL_LINES, sphereIndices.size(), GL_UNSIGNED_INT, 0);
 
         // Draw AABB
         std::vector<float> boxVertices = {
@@ -308,15 +297,13 @@ void AABBvsSphere(GLFWwindow* window, float radius, const glm::vec3& initialBoxC
         glBindVertexArray(boxVAO);
         glDrawElements(GL_LINES, boxIndices.size(), GL_UNSIGNED_INT, 0);
 
-        // Swap buffers and poll IO events
-        glfwSwapBuffers(window);
-        glfwPollEvents();
+     
 
         // Cleanup
         glDeleteVertexArrays(1, &boxVAO);
         glDeleteBuffers(1, &boxVBO);
         glDeleteBuffers(1, &boxEBO);
-    }
+    
 
     // Cleanup sphere
     glDeleteVertexArrays(1, &VAO);
@@ -375,9 +362,7 @@ void AABBvsAABB(GLFWwindow* window, const glm::vec3& initialBox1Center, const gl
     AABB box1 = { initialBox1Center - initialBox1HalfExtents, initialBox1Center + initialBox1HalfExtents, initialBox1Center, initialBox1HalfExtents };
     AABB box2 = { initialBox2Center - initialBox2HalfExtents, initialBox2Center + initialBox2HalfExtents, initialBox2Center, initialBox2HalfExtents };
 
-    // Render loop
-    while (!glfwWindowShouldClose(window))
-    {
+   
         // Clear the color and depth buffer
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -435,10 +420,8 @@ void AABBvsAABB(GLFWwindow* window, const glm::vec3& initialBox1Center, const gl
         glBindVertexArray(VAO);
         glDrawElements(GL_LINES, boxIndices.size(), GL_UNSIGNED_INT, 0);
 
-        // Swap buffers and poll IO events
-        glfwSwapBuffers(window);
-        glfwPollEvents();
-    }
+       
+    
 
     // Cleanup
     glDeleteVertexArrays(1, &VAO);
@@ -483,9 +466,7 @@ void PointVsSphere(GLFWwindow* window, const glm::vec3& point, float radius)
     Sphere sphere = { glm::vec3(0.f, 0.0f, -5.0f), radius };
     Point point1 = { point };
 
-    // Render loop
-    while (!glfwWindowShouldClose(window))
-    {
+   
         // Input
         processInput(window);
 
@@ -526,7 +507,7 @@ void PointVsSphere(GLFWwindow* window, const glm::vec3& point, float radius)
         glUniform3f(colorLoc, isInside ? 1.0f : 0.0f, isInside ? 0.0f : 1.0f, 0.0f);
 
         glBindVertexArray(VAO);
-        glDrawElements(GL_LINE_LOOP, sphereIndices.size(), GL_UNSIGNED_INT, 0);
+        glDrawElements(GL_LINES, sphereIndices.size(), GL_UNSIGNED_INT, 0);
 
         // Draw point
         glm::mat4 pointModel = glm::translate(glm::mat4(1.0f), point1.coordinates);
@@ -540,10 +521,8 @@ void PointVsSphere(GLFWwindow* window, const glm::vec3& point, float radius)
         glBindVertexArray(VAO); // Unbind the VAO
         glDrawArrays(GL_POINTS, 0, 1); // Draw the point
 
-        // Swap buffers and poll IO events
-        glfwSwapBuffers(window);
-        glfwPollEvents();
-    }
+    
+    
 
     // Cleanup
     glDeleteVertexArrays(1, &VAO);
@@ -602,9 +581,7 @@ void PointVsAABB(GLFWwindow* window, const glm::vec3& initialPointCoords, const 
     Point point = { initialPointCoords };
     AABB box = { boxCenter - boxHalfExtents, boxCenter + boxHalfExtents, boxCenter, boxHalfExtents };
 
-    // Render loop
-    while (!glfwWindowShouldClose(window))
-    {
+    
         // Input
         processInput(window);
 
@@ -658,10 +635,8 @@ void PointVsAABB(GLFWwindow* window, const glm::vec3& initialPointCoords, const 
 
         glDrawArrays(GL_POINTS, 0, 1); // Draw the point
 
-        // Swap buffers and poll IO events
-        glfwSwapBuffers(window);
-        glfwPollEvents();
-    }
+      
+    
 
     // Cleanup
     glDeleteVertexArrays(1, &VAO);
@@ -719,9 +694,7 @@ void PointVsPlane(GLFWwindow* window, const glm::vec3& initialPointCoords, const
     Point point = { initialPointCoords };
     Plane plane = { glm::vec4(planeNormal, planeOffset) };
 
-    // Render loop
-    while (!glfwWindowShouldClose(window))
-    {
+    
         // Input
         processInput(window);
 
@@ -771,10 +744,8 @@ void PointVsPlane(GLFWwindow* window, const glm::vec3& initialPointCoords, const
 
         glDrawArrays(GL_POINTS, 0, 1); // Draw the point
 
-        // Swap buffers and poll IO events
-        glfwSwapBuffers(window);
-        glfwPollEvents();
-    }
+      
+    
 
     // Cleanup
     glDeleteVertexArrays(1, &VAO);
@@ -829,9 +800,7 @@ void PointVsTriangle(GLFWwindow* window, const glm::vec3& initialPointCoords, co
 
     Point point = { initialPointCoords };
 
-    // Render loop
-    while (!glfwWindowShouldClose(window))
-    {
+    
         // Input
         processInput(window);
 
@@ -888,10 +857,8 @@ void PointVsTriangle(GLFWwindow* window, const glm::vec3& initialPointCoords, co
 
         glDrawArrays(GL_POINTS, 0, 1); // Draw the point
 
-        // Swap buffers and poll IO events
-        glfwSwapBuffers(window);
-        glfwPollEvents();
-    }
+   
+    
 
     // Cleanup
     glDeleteVertexArrays(1, &VAO);
@@ -951,9 +918,7 @@ void PlaneVsAABB(GLFWwindow* window, const glm::vec3& planeNormal, float planeOf
     AABB box = { initialBoxCenter - initialBoxHalfExtents, initialBoxCenter + initialBoxHalfExtents, initialBoxCenter, initialBoxHalfExtents };
     Plane plane = { glm::vec4(planeNormal, planeOffset) };
 
-    // Render loop
-    while (!glfwWindowShouldClose(window))
-    {
+    
         // Input
         processInput(window);
 
@@ -1040,15 +1005,13 @@ void PlaneVsAABB(GLFWwindow* window, const glm::vec3& planeNormal, float planeOf
         glBindVertexArray(planeVAO);
         glDrawElements(GL_TRIANGLES, planeIndices.size(), GL_UNSIGNED_INT, 0);
 
-        // Swap buffers and poll IO events
-        glfwSwapBuffers(window);
-        glfwPollEvents();
+   
 
         // Cleanup plane
         glDeleteVertexArrays(1, &planeVAO);
         glDeleteBuffers(1, &planeVBO);
         glDeleteBuffers(1, &planeEBO);
-    }
+    
 
     // Cleanup box
     glDeleteVertexArrays(1, &VAO);
@@ -1128,9 +1091,7 @@ void PlaneVsSphere(GLFWwindow* window, const glm::vec3& planeNormal, float plane
     Plane plane = { glm::vec4(planeNormal, planeOffset) };
     Sphere sphere = { glm::vec3(0.0f, 0.0f, -5.0f), sphereRadius };
 
-    // Render loop
-    while (!glfwWindowShouldClose(window))
-    {
+   
         // Input
         processInput(window);
 
@@ -1179,12 +1140,10 @@ void PlaneVsSphere(GLFWwindow* window, const glm::vec3& planeNormal, float plane
         glUniform3f(sphereColorLoc, 1.f,1.f,1.f); // Red if intersecting, green otherwise
 
         glBindVertexArray(sphereVAO);
-        glDrawElements(GL_LINE_LOOP, sphereIndices.size(), GL_UNSIGNED_INT, 0);
+        glDrawElements(GL_LINES, sphereIndices.size(), GL_UNSIGNED_INT, 0);
 
-        // Swap buffers and poll IO events
-        glfwSwapBuffers(window);
-        glfwPollEvents();
-    }
+
+    
 
     // Cleanup plane
     glDeleteVertexArrays(1, &planeVAO);
