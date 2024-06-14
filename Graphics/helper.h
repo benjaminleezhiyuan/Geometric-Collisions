@@ -39,3 +39,4 @@ bool checkIntersection(const Plane& plane, const Sphere& sphere);
 
 
 void generateSphere(std::vector<float>& vertices, std::vector<unsigned int>& indices, int sectorCount, int stackCount);
+void rungenerateSphere();

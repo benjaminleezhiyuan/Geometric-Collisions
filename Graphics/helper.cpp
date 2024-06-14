@@ -83,8 +83,6 @@ void shader()
 
 void spheremake()
 {
-    generateSphere(sphereVertices, sphereIndices, 36, 18);
-
     glGenVertexArrays(1, &sphereVAO);
     glGenBuffers(1, &sphereVBO);
     glGenBuffers(1, &sphereEBO);
@@ -167,7 +165,7 @@ void SphereVsSphere(GLFWwindow* window, Sphere Sphere1, Sphere Sphere2)
     glUseProgram(shaderProgram);
 
     // View matrix
-    glm::mat4 view = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -3.0f));
+    glm::mat4 view = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 1.0f, -3.0f));
 
     // Set the projection and view matrix uniforms
     GLint projectionLoc = glGetUniformLocation(shaderProgram, "projection");
@@ -1205,6 +1203,11 @@ void generateSphere(std::vector<float>& vertices, std::vector<unsigned int>& ind
     }
 }
 
+void rungenerateSphere()
+{
+    generateSphere(sphereVertices, sphereIndices, 36, 18);
+}
+
 bool checkIntersection(const Sphere& sphere1, const Sphere& sphere2)
 {
     float distance = glm::distance(sphere1.position, sphere2.position);
@@ -1272,7 +1275,6 @@ bool checkIntersection(const Plane& plane, const AABB& box)
     float s = glm::dot(plane.normal, glm::vec4(box.center, 1.0f)) - plane.normal.w;
 
     // Intersection occurs if the absolute distance from the center is less than or equal to the projection interval radius
-    std::cout << s << std::endl;
     return fabs(s) <= r;
 }
 
@@ -1282,7 +1284,6 @@ bool checkIntersection(const Plane& plane, const Sphere& sphere)
     float distance = glm::dot(plane.normal, glm::vec4(sphere.position, 1.f) - plane.normal.w);
 
     // Check if the absolute distance is less than or equal to the sphere's radius
-    std::cout << distance << std::endl;
     return fabs(distance) <= (sphere.radius*plane.normal.x)+ (sphere.radius * plane.normal.y)+ (sphere.radius * plane.normal.z);
 
 }

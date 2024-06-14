@@ -66,6 +66,7 @@ int main()
     glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     shader();
+    rungenerateSphere();
 
     // Initialize ImGui
     IMGUI_CHECKVERSION();
