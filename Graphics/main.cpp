@@ -14,6 +14,7 @@
 enum TestCase {
     SPHERE_VS_SPHERE,
     AABB_VS_SPHERE,
+    SPHERE_VS_AABB,
     AABB_VS_AABB,
     POINT_VS_SPHERE,
     POINT_VS_AABB,
@@ -75,25 +76,27 @@ int main()
     ImGui_ImplOpenGL3_Init("#version 330");
 
     // Set up the scene objects
-    glm::vec3 initialPointCoords(0.0f, 0.0f, -5.f);
-    float sphere1Radius = 1.0f;
-    glm::vec3 sphere1Position(0.0f, 0.0f, -5.0f);
-    float sphere2Radius = 1.0f;
-    glm::vec3 sphere2Position(0.0f, 0.0f, -5.0f);
-    glm::vec3 initialBoxCenter(0.0f, 0.0f, -5.0f);
-    glm::vec3 initialBoxHalfExtents(0.5f, 0.5f, 0.5f);
-    glm::vec4 planeNormal(0.0f, 1.0f, 0.0f, 0.0f);
-    float planeOffset = 0.0f;
-    Triangle triangle = {
-        glm::vec3(-1.0f, -1.0f, -5.f),
-        glm::vec3(1.0f, -1.0f, -5.f),
-        glm::vec3(0.0f, 1.0f, -5.f)
-    };
+    Point point{glm::vec3(0.f,0.f,0.f)};
+    
+    Sphere sphere1{ glm::vec3(0.f,0.f, 0.f),0.5f };
+    Sphere sphere2{ glm::vec3(0.f,0.f, 0.f),0.5f };
 
-    TestCase currentTestCase = SPHERE_VS_SPHERE;
+    AABB aabb1{ glm::vec3(0.0f, 0.0f, 0.0f) ,glm::vec3(0.5f, 0.5f, 0.5f) };
+    AABB aabb2{ glm::vec3(0.0f, 0.0f, 0.0f) ,glm::vec3(0.5f, 0.5f, 0.5f) };
+
+    Plane plane{ glm::vec4(0.0f, 5.0f, 1.0f, 0.0f) };
+
+    Triangle triangle{
+        glm::vec3(-0.5f, -0.5f, 0.f),
+        glm::vec3(0.5f, -0.5f, 0.f),
+        glm::vec3(0.0f, 0.5f, 0.f)
+    };
+   
+    TestCase currentTestCase = PLANE_VS_SPHERE;
     const char* testCaseNames[] = {
         "Sphere vs Sphere",
         "AABB vs Sphere",
+        "Sphere vs AABB",
         "AABB vs AABB",
         "Point vs Sphere",
         "Point vs AABB",
@@ -103,6 +106,7 @@ int main()
         "Plane vs Sphere"
     };
 
+    
     // Main render loop
     while (!glfwWindowShouldClose(window))
     {
@@ -123,23 +127,26 @@ int main()
         ImGui::Text("Object Properties:");
 
         ImGui::Text("Sphere 1:");
-        ImGui::InputFloat3("Position##sphere1", glm::value_ptr(sphere1Position));
-        ImGui::InputFloat("Radius##sphere1", &sphere1Radius);
+        ImGui::InputFloat3("Position##sphere1", glm::value_ptr(sphere1.position));
+        ImGui::InputFloat("Radius##sphere1", &sphere1.radius);
 
         ImGui::Text("Sphere 2:");
-        ImGui::InputFloat3("Position##sphere2", glm::value_ptr(sphere2Position));
-        ImGui::InputFloat("Radius##sphere2", &sphere2Radius);
+        ImGui::InputFloat3("Position##sphere2", glm::value_ptr(sphere2.position));
+        ImGui::InputFloat("Radius##sphere2", &sphere2.radius);
 
         ImGui::Text("Point:");
-        ImGui::InputFloat3("Coordinates", glm::value_ptr(initialPointCoords));
+        ImGui::InputFloat3("Coordinates", glm::value_ptr(point.coordinates));
 
-        ImGui::Text("AABB:");
-        ImGui::InputFloat3("Box Center", glm::value_ptr(initialBoxCenter));
-        ImGui::InputFloat3("Box Half Extents", glm::value_ptr(initialBoxHalfExtents));
+        ImGui::Text("AABB 1:");
+        ImGui::InputFloat3("Box 1 Center", glm::value_ptr(aabb1.center));
+        ImGui::InputFloat3("Box 1 Half Extents", glm::value_ptr(aabb1.halfExtents));
+
+        ImGui::Text("AABB 2:");
+        ImGui::InputFloat3("Box 2 Center", glm::value_ptr(aabb2.center));
+        ImGui::InputFloat3("Box 2 Half Extents", glm::value_ptr(aabb2.halfExtents));
 
         ImGui::Text("Plane:");
-        ImGui::InputFloat4("Normal", glm::value_ptr(planeNormal));
-        ImGui::InputFloat("Offset", &planeOffset);
+        ImGui::InputFloat4("Normal", glm::value_ptr(plane.normal));
 
         ImGui::Text("Triangle:");
         ImGui::InputFloat3("Vertex 1", glm::value_ptr(triangle.v1));
@@ -157,31 +164,34 @@ int main()
         switch (currentTestCase)
         {
         case SPHERE_VS_SPHERE:
-            SphereVsSphere(window, sphere1Radius, sphere2Radius, sphere1Position,sphere2Position);
+            SphereVsSphere(window, sphere1, sphere2);
             break;
         case AABB_VS_SPHERE:
-            AABBvsSphere(window, sphere1Radius, initialBoxCenter, initialBoxHalfExtents);
+            AABBVsSphere(window, aabb1, sphere1);
+            break;
+        case SPHERE_VS_AABB:
+            SphereVsAABB(window, sphere1, aabb1);
             break;
         case AABB_VS_AABB:
-            AABBvsAABB(window, initialBoxCenter, initialBoxHalfExtents, initialBoxCenter, initialBoxHalfExtents);
+            AABBvsAABB(window, aabb1,aabb2);
             break;
         case POINT_VS_SPHERE:
-            PointVsSphere(window, initialPointCoords, sphere1Radius);
+            PointVsSphere(window, point, sphere1);
             break;
         case POINT_VS_AABB:
-            PointVsAABB(window, initialPointCoords, initialBoxCenter, initialBoxHalfExtents);
+            PointVsAABB(window, point, aabb1);
             break;
         case POINT_VS_PLANE:
-            PointVsPlane(window, initialPointCoords, planeNormal, planeOffset);
+            PointVsPlane(window, point, plane);
             break;
         case POINT_VS_TRIANGLE:
-            PointVsTriangle(window, initialPointCoords, triangle);
+            PointVsTriangle(window, point, triangle);
             break;
         case PLANE_VS_AABB:
-            PlaneVsAABB(window, planeNormal, planeOffset, initialBoxCenter, initialBoxHalfExtents);
+            PlaneVsAABB(window, plane, aabb1);
             break;
         case PLANE_VS_SPHERE:
-            PlaneVsSphere(window, planeNormal, planeOffset, sphere1Radius);
+            PlaneVsSphere(window, plane, sphere1);
             break;
         }
 

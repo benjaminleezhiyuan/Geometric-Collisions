@@ -10,18 +10,21 @@
 
 
 void shader();
-void SphereVsSphere(GLFWwindow* window, float radius1, float radius2, const glm::vec3 position1, const glm::vec3 position2);
-void AABBvsSphere(GLFWwindow* window, float radius, const glm::vec3& initialBoxCenter, const glm::vec3& initialBoxHalfExtents);
-void AABBvsAABB(GLFWwindow* window, const glm::vec3& initialBox1Center, const glm::vec3& initialBox1HalfExtents, const glm::vec3& initialBox2Center, const glm::vec3& initialBox2HalfExtents); void processInput(GLFWwindow* window);
-void PointVsSphere(GLFWwindow* window, const glm::vec3& point, float radius);
-void PointVsAABB(GLFWwindow* window, const glm::vec3& initialPointCoords, const glm::vec3& boxCenter, const glm::vec3& boxHalfExtents);
-void PointVsPlane(GLFWwindow* window, const glm::vec3& initialPointCoords, const glm::vec3& planeNormal, float planeOffset);
-void PointVsTriangle(GLFWwindow* window, const glm::vec3& initialPointCoords, const Triangle& triangle);
-void PlaneVsAABB(GLFWwindow* window, const glm::vec3& planeNormal, float planeOffset, const glm::vec3& initialBoxCenter, const glm::vec3& initialBoxHalfExtents);
-void PlaneVsSphere(GLFWwindow* window, const glm::vec3& planeNormal, float planeOffset, float sphereRadius);
+void spheremake();
+void boxmake();
+void SphereVsSphere(GLFWwindow* window, Sphere Sphere1, Sphere Sphere2);
+void AABBVsSphere(GLFWwindow* window, AABB aabb, Sphere Sphere1);
+void SphereVsAABB(GLFWwindow* window, Sphere Sphere1, AABB aabb);
+void AABBvsAABB(GLFWwindow* window, AABB aabb1, AABB aabb2);
+void PointVsSphere(GLFWwindow* window, Point point, Sphere sphere1);
+void PointVsAABB(GLFWwindow* window, Point point1, AABB aabb);
+void PointVsPlane(GLFWwindow* window, Point point1, Plane plane1);
+void PointVsTriangle(GLFWwindow* window, Point point1, Triangle triangle);
+void PlaneVsAABB(GLFWwindow* window, Plane plane1, AABB aabb);
+void PlaneVsSphere(GLFWwindow* window, Plane plane1, Sphere sphere1);
 
 
-
+void processInput(GLFWwindow* window);
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 
 bool checkIntersection(const Sphere& sphere1, const Sphere& sphere2);
@@ -35,4 +38,4 @@ bool checkIntersection(const Plane& plane, const AABB& box);
 bool checkIntersection(const Plane& plane, const Sphere& sphere);
 
 
-void generateSphere(std::vector<float>& vertices, std::vector<unsigned int>& indices, float radius, int sectorCount, int stackCount);
+void generateSphere(std::vector<float>& vertices, std::vector<unsigned int>& indices, int sectorCount, int stackCount);

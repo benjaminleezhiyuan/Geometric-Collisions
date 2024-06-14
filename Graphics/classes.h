@@ -25,10 +25,10 @@ struct Sphere
 
 struct AABB
 {
-    glm::vec3 min;
-    glm::vec3 max;
     glm::vec3 center;
     glm::vec3 halfExtents;
+    glm::vec3 min;
+    glm::vec3 max;
 };
 
 struct Ray
