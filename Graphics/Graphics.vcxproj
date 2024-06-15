@@ -103,7 +103,7 @@
     <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);C:\glfw\include;C:\glew\include;C:\glm</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);C:\glfw\include;C:\glew\include;C:\glm</IncludePath>
+    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);$(SolutionDir)\glfw\include;$(SolutionDir)\glew\include;$(SolutionDir)\glm;$(SolutionDir)\imgui-master;$(SolutionDir)\imgui-master\backends</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);C:\glfw\include;C:\glew\include;C:\glm</IncludePath>
