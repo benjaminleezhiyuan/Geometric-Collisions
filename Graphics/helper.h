@@ -8,6 +8,9 @@
 #include <iostream>
 #include "classes.h"
 
+extern GLuint shaderProgram;
+extern glm::mat4 view;
+extern glm::mat4 projection;
 
 void shader();
 void spheremake();

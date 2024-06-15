@@ -1,6 +1,5 @@
 #include "helper.h"
 
-GLuint shaderProgram;
 std::vector<float> sphereVertices;
 std::vector<unsigned int> sphereIndices;
 GLuint sphereVBO, sphereVAO, sphereEBO;
@@ -152,7 +151,6 @@ void SphereVsSphere(GLFWwindow* window, Sphere Sphere1, Sphere Sphere2)
     // Projection matrix
     int width, height;
     glfwGetFramebufferSize(window, &width, &height);
-    glm::mat4 projection = glm::perspective(glm::radians(45.0f), static_cast<float>(width) / static_cast<float>(height), 0.1f, 100.0f);
 
     Sphere sphere1 = { Sphere1 };
     Sphere sphere2 = { Sphere2 };
@@ -163,9 +161,6 @@ void SphereVsSphere(GLFWwindow* window, Sphere Sphere1, Sphere Sphere2)
 
     // Use the shader program
     glUseProgram(shaderProgram);
-
-    // View matrix
-    glm::mat4 view = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 1.0f, -3.0f));
 
     // Set the projection and view matrix uniforms
     GLint projectionLoc = glGetUniformLocation(shaderProgram, "projection");
@@ -220,11 +215,6 @@ void AABBVsSphere(GLFWwindow* window, AABB aabb, Sphere Sphere1)
     // Enable depth test
     glEnable(GL_DEPTH_TEST);
 
-    // Projection matrix
-    int width, height;
-    glfwGetFramebufferSize(window, &width, &height);
-    glm::mat4 projection = glm::perspective(glm::radians(45.0f), static_cast<float>(width) / static_cast<float>(height), 0.1f, 100.0f);
-
     Sphere sphere = { Sphere1 };
     AABB box = { aabb };
 
@@ -234,9 +224,6 @@ void AABBVsSphere(GLFWwindow* window, AABB aabb, Sphere Sphere1)
 
     // Use the shader program
     glUseProgram(shaderProgram);
-
-    // View matrix
-    glm::mat4 view = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -3.0f));
 
     // Set the projection and view matrix uniforms
     GLint projectionLoc = glGetUniformLocation(shaderProgram, "projection");
@@ -335,11 +322,6 @@ void SphereVsAABB(GLFWwindow* window, Sphere Sphere1, AABB aabb)
     // Enable depth test
     glEnable(GL_DEPTH_TEST);
 
-    // Projection matrix
-    int width, height;
-    glfwGetFramebufferSize(window, &width, &height);
-    glm::mat4 projection = glm::perspective(glm::radians(45.0f), static_cast<float>(width) / static_cast<float>(height), 0.1f, 100.0f);
-
     Sphere sphere = { Sphere1 };
     AABB box = { aabb };
 
@@ -350,8 +332,6 @@ void SphereVsAABB(GLFWwindow* window, Sphere Sphere1, AABB aabb)
     // Use the shader program
     glUseProgram(shaderProgram);
 
-    // View matrix
-    glm::mat4 view = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -3.0f));
 
     // Set the projection and view matrix uniforms
     GLint projectionLoc = glGetUniformLocation(shaderProgram, "projection");
@@ -452,11 +432,6 @@ void AABBvsAABB(GLFWwindow* window, AABB aabb1, AABB aabb2) {
     // Enable depth test
     glEnable(GL_DEPTH_TEST);
 
-    // Projection matrix
-    int width, height;
-    glfwGetFramebufferSize(window, &width, &height);
-    glm::mat4 projection = glm::perspective(glm::radians(45.0f), static_cast<float>(width) / static_cast<float>(height), 0.1f, 100.0f);
-
     AABB box1 = { aabb1 };
     AABB box2 = { aabb2 };
 
@@ -467,9 +442,6 @@ void AABBvsAABB(GLFWwindow* window, AABB aabb1, AABB aabb2) {
 
     // Use the shader program
     glUseProgram(shaderProgram);
-
-    // View matrix
-    glm::mat4 view = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -3.0f));
 
     // Set the projection and view matrix uniforms
     GLint projectionLoc = glGetUniformLocation(shaderProgram, "projection");
@@ -531,68 +503,60 @@ void PointVsSphere(GLFWwindow* window, Point point, Sphere sphere1)
     // Enable depth test
     glEnable(GL_DEPTH_TEST);
 
-    // Projection matrix
-    int width, height;
-    glfwGetFramebufferSize(window, &width, &height);
-    glm::mat4 projection = glm::perspective(glm::radians(45.0f), static_cast<float>(width) / static_cast<float>(height), 0.1f, 100.0f);
-
     Sphere sphere = { sphere1 };
     Point point1 = { point };
 
    
-        // Input
-        processInput(window);
+    // Input
+    processInput(window);
 
-        // Clear the color and depth buffer
-        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+    // Clear the color and depth buffer
+    glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        // Use the shader program
-        glUseProgram(shaderProgram);
+    // Use the shader program
+    glUseProgram(shaderProgram);
 
-        // View matrix
-        glm::mat4 view = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -3.0f));
+    // Set the projection and view matrix uniforms
+    GLint projectionLoc = glGetUniformLocation(shaderProgram, "projection");
+    glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
 
-        // Set the projection and view matrix uniforms
-        GLint projectionLoc = glGetUniformLocation(shaderProgram, "projection");
-        glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
-
-        GLint viewLoc = glGetUniformLocation(shaderProgram, "view");
-        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+    GLint viewLoc = glGetUniformLocation(shaderProgram, "view");
+    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
 
 
-        // Animate the point and sphere moving left and right
-        float time = static_cast<float>(glfwGetTime());
-        point1.coordinates.x = sin(time) * 2.0f;
-        sphere.position.x = -sin(time) * 2.0f;
+    // Animate the point and sphere moving left and right
+    float time = static_cast<float>(glfwGetTime());
+    point1.coordinates.x = sin(time) * 2.0f;
+    sphere.position.x = -sin(time) * 2.0f;
 
-        // Check for intersection
-        bool isInside = checkIntersection(point1, sphere);
+    // Check for intersection
+    bool isInside = checkIntersection(point1, sphere);
 
-        // Draw sphere
-        glm::mat4 model = glm::translate(glm::mat4(1.0f), sphere.position);
-        glm::mat4 scale = glm::scale(glm::mat4(1.0f), glm::vec3(sphere.radius));
-        model = model * scale;
-        GLint modelLoc = glGetUniformLocation(shaderProgram, "model");
-        glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+    // Draw sphere
+    glm::mat4 model = glm::translate(glm::mat4(1.0f), sphere.position);
+    glm::mat4 scale = glm::scale(glm::mat4(1.0f), glm::vec3(sphere.radius));
+    model = model * scale;
+    GLint modelLoc = glGetUniformLocation(shaderProgram, "model");
+    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
 
-        GLint colorLoc = glGetUniformLocation(shaderProgram, "color");
-        glUniform3f(colorLoc, isInside ? 1.0f : 0.0f, isInside ? 0.0f : 1.0f, 0.0f);
+    GLint colorLoc = glGetUniformLocation(shaderProgram, "color");
+    glUniform3f(colorLoc, isInside ? 1.0f : 0.0f, isInside ? 0.0f : 1.0f, 0.0f);
 
-        glBindVertexArray(sphereVAO);
-        glDrawElements(GL_LINES, sphereIndices.size(), GL_UNSIGNED_INT, 0);
+    glBindVertexArray(sphereVAO);
+    glDrawElements(GL_LINES, sphereIndices.size(), GL_UNSIGNED_INT, 0);
 
-        // Draw point
-        glm::mat4 pointModel = glm::translate(glm::mat4(1.0f), point1.coordinates);
-        pointModel = glm::scale(pointModel, glm::vec3(0.1f));
-        GLint pointModelLoc = glGetUniformLocation(shaderProgram, "model");
-        glUniformMatrix4fv(pointModelLoc, 1, GL_FALSE, glm::value_ptr(pointModel));
+    // Draw point
+    glm::mat4 pointModel = glm::translate(glm::mat4(1.0f), point1.coordinates);
+    pointModel = glm::scale(pointModel, glm::vec3(0.1f));
+    GLint pointModelLoc = glGetUniformLocation(shaderProgram, "model");
+    glUniformMatrix4fv(pointModelLoc, 1, GL_FALSE, glm::value_ptr(pointModel));
 
-        GLint pointColorLoc = glGetUniformLocation(shaderProgram, "color");
-        glUniform3f(pointColorLoc, isInside ? 1.0f : 0.0f, isInside ? 0.0f : 1.0f, 0.0f);
+    GLint pointColorLoc = glGetUniformLocation(shaderProgram, "color");
+    glUniform3f(pointColorLoc, isInside ? 1.0f : 0.0f, isInside ? 0.0f : 1.0f, 0.0f);
 
-        glBindVertexArray(sphereVAO); // Unbind the VAO
-        glDrawArrays(GL_POINTS, 0, 1); // Draw the point
+    glBindVertexArray(sphereVAO); // Unbind the VAO
+    glDrawArrays(GL_POINTS, 0, 1); // Draw the point
 
     
     
@@ -609,11 +573,6 @@ void PointVsAABB(GLFWwindow* window, Point point1, AABB aabb)
     // Enable depth test
     glEnable(GL_DEPTH_TEST);
 
-    // Projection matrix
-    int width, height;
-    glfwGetFramebufferSize(window, &width, &height);
-    glm::mat4 projection = glm::perspective(glm::radians(45.0f), static_cast<float>(width) / static_cast<float>(height), 0.1f, 100.0f);
-
     Point point = { point1 };
     AABB box = { aabb };
     
@@ -626,9 +585,6 @@ void PointVsAABB(GLFWwindow* window, Point point1, AABB aabb)
 
     // Use the shader program
     glUseProgram(shaderProgram);
-
-    // View matrix
-    glm::mat4 view = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -3.0f));
 
     // Set the projection and view matrix uniforms
     GLint projectionLoc = glGetUniformLocation(shaderProgram, "projection");
@@ -724,11 +680,6 @@ void PointVsPlane(GLFWwindow* window, Point point1, Plane plane1)
     // Enable depth test
     glEnable(GL_DEPTH_TEST);
 
-    // Projection matrix
-    int width, height;
-    glfwGetFramebufferSize(window, &width, &height);
-    glm::mat4 projection = glm::perspective(glm::radians(45.0f), static_cast<float>(width) / static_cast<float>(height), 0.1f, 100.0f);
-
     Point point = { point1 };
     Plane plane = { plane1 };
 
@@ -741,9 +692,6 @@ void PointVsPlane(GLFWwindow* window, Point point1, Plane plane1)
 
     // Use the shader program
     glUseProgram(shaderProgram);
-
-    // View matrix
-    glm::mat4 view = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -3.0f));
 
     // Set the projection and view matrix uniforms
     GLint projectionLoc = glGetUniformLocation(shaderProgram, "projection");
@@ -827,14 +775,8 @@ void PointVsTriangle(GLFWwindow* window, Point point1, Triangle triangle)
     // Enable depth test
     glEnable(GL_DEPTH_TEST);
 
-    // Projection matrix
-    int width, height;
-    glfwGetFramebufferSize(window, &width, &height);
-    glm::mat4 projection = glm::perspective(glm::radians(45.0f), static_cast<float>(width) / static_cast<float>(height), 0.1f, 100.0f);
-
     Point point = { point1 };
-
-    
+  
     // Input
     processInput(window);
 
@@ -845,8 +787,6 @@ void PointVsTriangle(GLFWwindow* window, Point point1, Triangle triangle)
     // Use the shader program
     glUseProgram(shaderProgram);
 
-    // View matrix
-    glm::mat4 view = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -3.0f));
 
     GLint projectionLoc = glGetUniformLocation(shaderProgram, "projection");
     glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
@@ -948,11 +888,6 @@ void PlaneVsAABB(GLFWwindow* window, Plane plane1, AABB aabb)
     // Enable depth test
     glEnable(GL_DEPTH_TEST);
 
-    // Projection matrix
-    int width, height;
-    glfwGetFramebufferSize(window, &width, &height);
-    glm::mat4 projection = glm::perspective(glm::radians(45.0f), static_cast<float>(width) / static_cast<float>(height), 0.1f, 100.0f);
-
     AABB box = { aabb};
     Plane plane = { plane1 };
 
@@ -965,9 +900,6 @@ void PlaneVsAABB(GLFWwindow* window, Plane plane1, AABB aabb)
 
     // Use the shader program
     glUseProgram(shaderProgram);
-
-    // View matrix
-    glm::mat4 view = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -3.0f));
 
     // Set the projection and view matrix uniforms
     GLint projectionLoc = glGetUniformLocation(shaderProgram, "projection");
@@ -1070,11 +1002,6 @@ void PlaneVsSphere(GLFWwindow* window, Plane plane1, Sphere sphere1)
     // Enable depth test
     glEnable(GL_DEPTH_TEST);
 
-    // Projection matrix
-    int width, height;
-    glfwGetFramebufferSize(window, &width, &height);
-    glm::mat4 projection = glm::perspective(glm::radians(45.0f), static_cast<float>(width) / static_cast<float>(height), 0.1f, 100.0f);
-
     Plane plane = {plane1};
     Sphere sphere = { sphere1 };
 
@@ -1084,9 +1011,6 @@ void PlaneVsSphere(GLFWwindow* window, Plane plane1, Sphere sphere1)
 
     // Use the shader program
     glUseProgram(shaderProgram);
-
-    // View matrix
-    glm::mat4 view = glm::translate(glm::mat4(1.0f), glm::vec3(0.0f, 0.0f, -3.0f));
 
     // Set the projection and view matrix uniforms
     GLint projectionLoc = glGetUniformLocation(shaderProgram, "projection");

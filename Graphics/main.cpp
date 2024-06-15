@@ -24,11 +24,135 @@ enum TestCase {
     PLANE_VS_SPHERE,
 };
 
+TestCase currentTestCase;
+
+GLFWwindow* window;
+
+GLuint shaderProgram;
+
+//Pip stuff
+glm::mat4 view,projection;
+GLuint fbo;
+GLuint fboTexture;
+GLuint rbo;
+const unsigned int FBO_WIDTH = 1920;  // Width of the FBO texture
+const unsigned int FBO_HEIGHT = 1080; // Height of the FBO texture
+float renderWidth, renderHeight;
+
+glm::vec3 eye{ 0.0f, 5.0f, 0.0f }, target{ 0.0f, 0.0f, 0.0f }, up{ 0.0f, 0.0f, 1.0f };
+
+
+// Set up the scene objects
+Point point{ glm::vec3(0.f,0.f,0.f) };
+
+Sphere sphere1{ glm::vec3(0.f,0.f, 0.f),0.5f };
+Sphere sphere2{ glm::vec3(0.f,0.f, 0.f),0.5f };
+
+AABB aabb1{ glm::vec3(0.0f, 0.0f, 0.0f) ,glm::vec3(0.5f, 0.5f, 0.5f) };
+AABB aabb2{ glm::vec3(0.0f, 0.0f, 0.0f) ,glm::vec3(0.5f, 0.5f, 0.5f) };
+
+Plane plane{ glm::vec4(0.0f, 5.0f, 1.0f, 0.0f) };
+
+Triangle triangle{
+    glm::vec3(-0.5f, -0.5f, 0.f),
+    glm::vec3(0.5f, -0.5f, 0.f),
+    glm::vec3(0.0f, 0.5f, 0.f)
+};
+
+void setupFBO()
+{
+    glGenFramebuffers(1, &fbo);
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+
+    // Create a texture to render the scene into
+    glGenTextures(1, &fboTexture);
+    glBindTexture(GL_TEXTURE_2D, fboTexture);
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, FBO_WIDTH, FBO_HEIGHT, 0, GL_RGB, GL_UNSIGNED_BYTE, NULL);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+    glBindTexture(GL_TEXTURE_2D, 0);
+
+    // Attach the texture to the framebuffer
+    glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, fboTexture, 0);
+
+    // Create a renderbuffer object for depth and stencil attachment
+    glGenRenderbuffers(1, &rbo);
+    glBindRenderbuffer(GL_RENDERBUFFER, rbo);
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, FBO_WIDTH, FBO_HEIGHT);
+    glBindRenderbuffer(GL_RENDERBUFFER, 0);
+
+    // Attach the renderbuffer object to the framebuffer
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_STENCIL_ATTACHMENT, GL_RENDERBUFFER, rbo);
+
+    if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+        std::cerr << "ERROR::FRAMEBUFFER:: Framebuffer is not complete!" << std::endl;
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+void renderToFBO()
+{
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+    glViewport(0, 0, FBO_WIDTH, FBO_HEIGHT);
+
+    // Clear the color and depth buffer
+    glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    // Set up a different camera position
+    projection = glm::perspective(glm::radians(45.0f), (float)renderWidth / (float)renderHeight, 0.1f, 100.0f);
+    view = glm::lookAt(eye, target,up);
+
+    // Set the projection and view matrix uniforms in the shader
+    glUseProgram(shaderProgram);
+    GLint projectionLoc = glGetUniformLocation(shaderProgram, "projection");
+    glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
+    GLint viewLoc = glGetUniformLocation(shaderProgram, "view");
+    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+
+    // Rendering logic based on selected test case
+    switch (currentTestCase)
+    {
+    case SPHERE_VS_SPHERE:
+        SphereVsSphere(window, sphere1, sphere2);
+        break;
+    case AABB_VS_SPHERE:
+        AABBVsSphere(window, aabb1, sphere1);
+        break;
+    case SPHERE_VS_AABB:
+        SphereVsAABB(window, sphere1, aabb1);
+        break;
+    case AABB_VS_AABB:
+        AABBvsAABB(window, aabb1, aabb2);
+        break;
+    case POINT_VS_SPHERE:
+        PointVsSphere(window, point, sphere1);
+        break;
+    case POINT_VS_AABB:
+        PointVsAABB(window, point, aabb1);
+        break;
+    case POINT_VS_PLANE:
+        PointVsPlane(window, point, plane);
+        break;
+    case POINT_VS_TRIANGLE:
+        PointVsTriangle(window, point, triangle);
+        break;
+    case PLANE_VS_AABB:
+        PlaneVsAABB(window, plane, aabb1);
+        break;
+    case PLANE_VS_SPHERE:
+        PlaneVsSphere(window, plane, sphere1);
+        break;
+    }
+
+    glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
 int main()
 {
     // Window settings
-    const unsigned int SCR_WIDTH = 800;
-    const unsigned int SCR_HEIGHT = 600;
+    const unsigned int SCR_WIDTH = 1920;
+    const unsigned int SCR_HEIGHT = 1080;
 
     // Initialize GLFW
     if (!glfwInit())
@@ -43,7 +167,7 @@ int main()
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
     // Create a windowed mode window and its OpenGL context
-    GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "OpenGL Spheres Intersection", NULL, NULL);
+    window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "OpenGL Spheres Intersection", NULL, NULL);
     if (!window)
     {
         std::cerr << "Failed to create GLFW window" << std::endl;
@@ -76,24 +200,7 @@ int main()
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init("#version 330");
 
-    // Set up the scene objects
-    Point point{glm::vec3(0.f,0.f,0.f)};
-    
-    Sphere sphere1{ glm::vec3(0.f,0.f, 0.f),0.5f };
-    Sphere sphere2{ glm::vec3(0.f,0.f, 0.f),0.5f };
-
-    AABB aabb1{ glm::vec3(0.0f, 0.0f, 0.0f) ,glm::vec3(0.5f, 0.5f, 0.5f) };
-    AABB aabb2{ glm::vec3(0.0f, 0.0f, 0.0f) ,glm::vec3(0.5f, 0.5f, 0.5f) };
-
-    Plane plane{ glm::vec4(0.0f, 5.0f, 1.0f, 0.0f) };
-
-    Triangle triangle{
-        glm::vec3(-0.5f, -0.5f, 0.f),
-        glm::vec3(0.5f, -0.5f, 0.f),
-        glm::vec3(0.0f, 0.5f, 0.f)
-    };
-   
-    TestCase currentTestCase = PLANE_VS_SPHERE;
+    currentTestCase = PLANE_VS_SPHERE;
     const char* testCaseNames[] = {
         "Sphere vs Sphere",
         "AABB vs Sphere",
@@ -107,12 +214,17 @@ int main()
         "Plane vs Sphere"
     };
 
-    
+    setupFBO();
+
     // Main render loop
     while (!glfwWindowShouldClose(window))
     {
         // Input
         processInput(window);
+
+        // Get the size of the main window's framebuffer
+        int mainRenderWidth, mainRenderHeight;
+        glfwGetFramebufferSize(window, &mainRenderWidth, &mainRenderHeight);
 
         // Start ImGui frame
         ImGui_ImplOpenGL3_NewFrame();
@@ -153,13 +265,51 @@ int main()
         ImGui::InputFloat3("Vertex 1", glm::value_ptr(triangle.v1));
         ImGui::InputFloat3("Vertex 2", glm::value_ptr(triangle.v2));
         ImGui::InputFloat3("Vertex 3", glm::value_ptr(triangle.v3));
-
         ImGui::End();
+
+        // Create a draggable ImGui window to display the FBO texture
+        ImGui::Begin("FBO Render");
+        ImGui::Text("Render from a different camera position");
+        ImGui::Text("Second Camera");
+        ImGui::SliderFloat3("Eye", glm::value_ptr(eye), -5.0f, 5.0f);
+        ImGui::SliderFloat3("Target", glm::value_ptr(target), -5.0f, 5.0f);
+        ImGui::SliderFloat3("Up", glm::value_ptr(up), -5.0f, 5.0f);
+
+        // Get the size of the ImGui window
+        ImVec2 imguiWindowSize = ImGui::GetContentRegionAvail();
+        float imguiWindowWidth = imguiWindowSize.x;
+        float imguiWindowHeight = imguiWindowSize.y;
+
+        // Calculate the aspect ratio of the texture
+        float aspectRatio = (float)FBO_WIDTH / (float)FBO_HEIGHT;
+
+        // Calculate the appropriate width and height to maintain the aspect ratio
+        if (imguiWindowWidth / imguiWindowHeight > aspectRatio)
+        {
+            renderWidth = imguiWindowHeight * aspectRatio;
+            renderHeight = imguiWindowHeight;
+        }
+        else
+        {
+            renderWidth = imguiWindowWidth;
+            renderHeight = imguiWindowWidth / aspectRatio;
+        }
+
+        // Render to ImGui window using the calculated size
+        ImGui::Image((void*)(intptr_t)fboTexture, ImVec2(renderWidth, renderHeight));
+        ImGui::End();
+
+        renderToFBO();
 
         // Clear the color and depth buffer
         glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         glEnable(GL_PROGRAM_POINT_SIZE);
+
+        view = glm::lookAt(glm::vec3(0.0f, 0.0f, -3.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+        projection = glm::perspective(glm::radians(45.0f), static_cast<float>(mainRenderWidth) / static_cast<float>(mainRenderHeight), 0.1f, 100.0f);
+
+        glViewport(0, 0, mainRenderWidth, mainRenderHeight);
 
         // Rendering logic based on selected test case
         switch (currentTestCase)
