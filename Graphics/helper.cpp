@@ -1792,9 +1792,13 @@ bool checkIntersection(const Ray& ray, const Triangle& triangle, glm::vec3& inte
 
 bool checkIntersection(const Ray& ray, const AABB& box, glm::vec3& intersectionPoint)
 {
+    // Calculate min and max using center and halfExtents
+    glm::vec3 boxMin = box.center - box.halfExtents;
+    glm::vec3 boxMax = box.center + box.halfExtents;
+
     glm::vec3 invDir = 1.0f / ray.direction;
-    glm::vec3 t0s = (box.min - ray.start) * invDir;
-    glm::vec3 t1s = (box.max - ray.start) * invDir;
+    glm::vec3 t0s = (boxMin - ray.start) * invDir;
+    glm::vec3 t1s = (boxMax - ray.start) * invDir;
     glm::vec3 tmins = glm::min(t0s, t1s);
     glm::vec3 tmaxs = glm::max(t0s, t1s);
     float tmin = glm::max(glm::max(tmins.x, tmins.y), tmins.z);
