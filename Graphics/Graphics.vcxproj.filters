@@ -2,18 +2,6 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="..\common\cg.cpp">
-      <Filter>Misc</Filter>
-    </ClCompile>
-    <ClCompile Include="..\common\debug.cpp">
-      <Filter>Misc</Filter>
-    </ClCompile>
-    <ClCompile Include="..\common\program.cpp">
-      <Filter>Misc</Filter>
-    </ClCompile>
-    <ClCompile Include="..\common\trianglemeshes.cpp">
-      <Filter>Misc</Filter>
-    </ClCompile>
     <ClCompile Include="helper.cpp" />
     <ClCompile Include="..\imgui-master\imgui.cpp">
       <Filter>imgui</Filter>
@@ -38,17 +26,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Framework.frag.glsl">
-      <Filter>Misc</Filter>
-    </None>
-    <None Include="Framework.vert.glsl">
-      <Filter>Misc</Filter>
-    </None>
-  </ItemGroup>
-  <ItemGroup>
-    <Filter Include="Misc">
-      <UniqueIdentifier>{b55f3c87-ddc7-4307-a34e-7ee96e3d30d8}</UniqueIdentifier>
-    </Filter>
     <Filter Include="imgui">
       <UniqueIdentifier>{9c1c25e2-803c-4645-8f42-ac190f4973f8}</UniqueIdentifier>
     </Filter>

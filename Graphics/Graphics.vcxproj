@@ -305,10 +305,6 @@ powershell Compress-Archive -Path "..\CGFW" -Update -DestinationPath ..\CGFW_$([
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\common\cg.cpp" />
-    <ClCompile Include="..\common\debug.cpp" />
-    <ClCompile Include="..\common\program.cpp" />
-    <ClCompile Include="..\common\trianglemeshes.cpp" />
     <ClCompile Include="..\imgui-master\backends\imgui_impl_glfw.cpp" />
     <ClCompile Include="..\imgui-master\backends\imgui_impl_opengl3.cpp" />
     <ClCompile Include="..\imgui-master\imgui.cpp" />
@@ -318,10 +314,6 @@ powershell Compress-Archive -Path "..\CGFW" -Update -DestinationPath ..\CGFW_$([
     <ClCompile Include="..\imgui-master\imgui_widgets.cpp" />
     <ClCompile Include="helper.cpp" />
     <ClCompile Include="main.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Framework.frag.glsl" />
-    <None Include="Framework.vert.glsl" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="classes.h" />
