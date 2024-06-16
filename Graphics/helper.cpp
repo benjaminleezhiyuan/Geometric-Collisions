@@ -145,6 +145,7 @@ void boxmake()
 void SphereVsSphere(Sphere Sphere1, Sphere Sphere2)
 {
     spheremake();
+
     // Enable depth test
     glEnable(GL_DEPTH_TEST);
 
@@ -159,15 +160,6 @@ void SphereVsSphere(Sphere Sphere1, Sphere Sphere2)
     glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    // Use the shader program
-    glUseProgram(shaderProgram);
-
-    // Set the projection and view matrix uniforms
-    GLint projectionLoc = glGetUniformLocation(shaderProgram, "projection");
-    glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
-
-    GLint viewLoc = glGetUniformLocation(shaderProgram, "view");
-    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
 
     // Animate the spheres moving left and right
     float time = static_cast<float>(glfwGetTime());
@@ -225,15 +217,6 @@ void AABBVsSphere( AABB aabb, Sphere Sphere1)
     glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    // Use the shader program
-    glUseProgram(shaderProgram);
-
-    // Set the projection and view matrix uniforms
-    GLint projectionLoc = glGetUniformLocation(shaderProgram, "projection");
-    glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
-
-    GLint viewLoc = glGetUniformLocation(shaderProgram, "view");
-    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
 
     // Animate the sphere moving left and right
     float time = static_cast<float>(glfwGetTime());
@@ -342,16 +325,6 @@ void SphereVsAABB( Sphere Sphere1, AABB aabb)
     glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    // Use the shader program
-    glUseProgram(shaderProgram);
-
-    // Set the projection and view matrix uniforms
-    GLint projectionLoc = glGetUniformLocation(shaderProgram, "projection");
-    glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
-
-    GLint viewLoc = glGetUniformLocation(shaderProgram, "view");
-    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
-
     // Animate the sphere moving left and right
     float time = static_cast<float>(glfwGetTime());
     if (animate)
@@ -448,7 +421,7 @@ void SphereVsAABB( Sphere Sphere1, AABB aabb)
     glDeleteBuffers(1, &sphereEBO);
 }
 
-void AABBvsAABB( AABB aabb1, AABB aabb2) {
+void AABBvsAABB( AABB aabb1, AABB aabb2)   {
 
     boxmake();
 
@@ -457,21 +430,6 @@ void AABBvsAABB( AABB aabb1, AABB aabb2) {
 
     AABB box1 = { aabb1 };
     AABB box2 = { aabb2 };
-
-   
-    // Clear the color and depth buffer
-    glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    // Use the shader program
-    glUseProgram(shaderProgram);
-
-    // Set the projection and view matrix uniforms
-    GLint projectionLoc = glGetUniformLocation(shaderProgram, "projection");
-    glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
-
-    GLint viewLoc = glGetUniformLocation(shaderProgram, "view");
-    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
 
     // Animate the boxes moving left and right
     float time = static_cast<float>(glfwGetTime());
@@ -533,25 +491,6 @@ void PointVsSphere( Point point, Sphere sphere1)
     Sphere sphere = { sphere1 };
     Point point1 = { point };
 
-   
-    // Input
-    processInput(window);
-
-    // Clear the color and depth buffer
-    glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    // Use the shader program
-    glUseProgram(shaderProgram);
-
-    // Set the projection and view matrix uniforms
-    GLint projectionLoc = glGetUniformLocation(shaderProgram, "projection");
-    glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
-
-    GLint viewLoc = glGetUniformLocation(shaderProgram, "view");
-    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
-
-
     // Animate the point and sphere moving left and right
     float time = static_cast<float>(glfwGetTime());
     if (animate)
@@ -603,23 +542,6 @@ void PointVsAABB( Point point1, AABB aabb)
 
     Point point = { point1 };
     AABB box = { aabb };
-    
-    // Input
-    processInput(window);
-
-    // Clear the color and depth buffer
-    glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    // Use the shader program
-    glUseProgram(shaderProgram);
-
-    // Set the projection and view matrix uniforms
-    GLint projectionLoc = glGetUniformLocation(shaderProgram, "projection");
-    glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
-
-    GLint viewLoc = glGetUniformLocation(shaderProgram, "view");
-    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
 
     // Animate the point moving left and right
     float time = static_cast<float>(glfwGetTime());
@@ -715,23 +637,6 @@ void PointVsPlane( Point point1, Plane plane1)
     Point point = { point1 };
     Plane plane = { plane1 };
 
-    // Input
-    processInput(window);
-
-    // Clear the color and depth buffer
-    glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    // Use the shader program
-    glUseProgram(shaderProgram);
-
-    // Set the projection and view matrix uniforms
-    GLint projectionLoc = glGetUniformLocation(shaderProgram, "projection");
-    glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
-
-    GLint viewLoc = glGetUniformLocation(shaderProgram, "view");
-    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
-
     // Animate the point moving up and down
     float time = static_cast<float>(glfwGetTime());
     if (animate)
@@ -812,23 +717,6 @@ void PointVsTriangle( Point point1, Triangle triangle)
 
     Point point = { point1 };
   
-    // Input
-    processInput(window);
-
-    // Clear the color and depth buffer
-    glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    // Use the shader program
-    glUseProgram(shaderProgram);
-
-
-    GLint projectionLoc = glGetUniformLocation(shaderProgram, "projection");
-    glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
-
-    GLint viewLoc = glGetUniformLocation(shaderProgram, "view");
-    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
-
     // Animate the point moving up and down
     float time = static_cast<float>(glfwGetTime());
     float rotationSpeed;
@@ -935,23 +823,6 @@ void PlaneVsAABB( Plane plane1, AABB aabb)
     AABB box = { aabb};
     Plane plane = { plane1 };
 
-    // Input
-    processInput(window);
-
-    // Clear the color and depth buffer
-    glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    // Use the shader program
-    glUseProgram(shaderProgram);
-
-    // Set the projection and view matrix uniforms
-    GLint projectionLoc = glGetUniformLocation(shaderProgram, "projection");
-    glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
-
-    GLint viewLoc = glGetUniformLocation(shaderProgram, "view");
-    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
-
     // Animate the box moving up and down
     float time = static_cast<float>(glfwGetTime());
     if (animate)
@@ -1053,20 +924,6 @@ void PlaneVsSphere( Plane plane1, Sphere sphere1)
     Plane plane = {plane1};
     Sphere sphere = { sphere1 };
 
-    // Clear the color and depth buffer
-    glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    // Use the shader program
-    glUseProgram(shaderProgram);
-
-    // Set the projection and view matrix uniforms
-    GLint projectionLoc = glGetUniformLocation(shaderProgram, "projection");
-    glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
-
-    GLint viewLoc = glGetUniformLocation(shaderProgram, "view");
-    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
-
     // Animate the sphere moving up and down
     float time = static_cast<float>(glfwGetTime());
     if (animate)
@@ -1160,23 +1017,6 @@ void RayVsPlane( Ray ray, Plane plane)
 
     Ray ray1 = ray;
     Plane plane1 = plane;
-
-    // Input
-    processInput(window);
-
-    // Clear the color and depth buffer
-    glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    // Use the shader program
-    glUseProgram(shaderProgram);
-
-    // Set the projection and view matrix uniforms
-    GLint projectionLoc = glGetUniformLocation(shaderProgram, "projection");
-    glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
-
-    GLint viewLoc = glGetUniformLocation(shaderProgram, "view");
-    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
 
     // Check for intersection
     glm::vec3 intersectionPoint;
@@ -1287,22 +1127,6 @@ void RayVsTriangle( Ray ray, Triangle triangle)
 
     Ray ray1 = ray;
 
-    // Input
-    processInput(window);
-
-    // Clear the color and depth buffer
-    glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    // Use the shader program
-    glUseProgram(shaderProgram);
-
-    // Set the projection and view matrix uniforms
-    GLint projectionLoc = glGetUniformLocation(shaderProgram, "projection");
-    glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
-
-    GLint viewLoc = glGetUniformLocation(shaderProgram, "view");
-    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
 
     // Animate the ray moving up and down
     float time = static_cast<float>(glfwGetTime());
@@ -1395,16 +1219,6 @@ void RayVsAABB( Ray ray, AABB aabb)
     Ray ray1 = ray;
     AABB box = aabb;
 
-    // Input
-    processInput(window);
-
-    // Clear the color and depth buffer
-    glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    // Use the shader program
-    glUseProgram(shaderProgram);
-
     // Animate the sphere moving left and right
     float time = static_cast<float>(glfwGetTime());
     if (animate)
@@ -1415,13 +1229,7 @@ void RayVsAABB( Ray ray, AABB aabb)
         box.min = box.center - box.halfExtents;
         box.max = box.center + box.halfExtents;
     }
-    
-    // Set the projection and view matrix uniforms
-    GLint projectionLoc = glGetUniformLocation(shaderProgram, "projection");
-    glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
-
-    GLint viewLoc = glGetUniformLocation(shaderProgram, "view");
-    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+   
 
     // Check for intersection
     glm::vec3 intersectionPoint;
@@ -1503,31 +1311,13 @@ void RayVsSphere( Ray ray, Sphere sphere1)
     Ray ray1 = ray;
     Sphere sphere = sphere1;
 
-    // Input
-    processInput(window);
-
-    // Clear the color and depth buffer
-    glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
-    // Use the shader program
-    glUseProgram(shaderProgram);
-
     // Animate the sphere moving left and right
     float time = static_cast<float>(glfwGetTime());
     if (animate)
     {
         sphere.position.x = -sin(time) * 2.0f;
     }
-    
-
-    // Set the projection and view matrix uniforms
-    GLint projectionLoc = glGetUniformLocation(shaderProgram, "projection");
-    glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
-
-    GLint viewLoc = glGetUniformLocation(shaderProgram, "view");
-    glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
-
+   
     // Check for intersection
     glm::vec3 intersectionPoint;
     bool isIntersecting = checkIntersection(ray1, sphere, intersectionPoint);

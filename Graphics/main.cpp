@@ -113,6 +113,7 @@ void renderToFBO()
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     // Set up a different camera position
+    if(renderHeight>0)
     projection = glm::perspective(glm::radians(45.0f), (float)renderWidth / (float)renderHeight, 0.1f, 100.0f);
     view = glm::lookAt(eye, target,up);
 
@@ -342,10 +343,19 @@ int main()
         glEnable(GL_PROGRAM_POINT_SIZE);
 
         view = glm::lookAt(glm::vec3(0.0f, 0.0f, 3.0f), glm::vec3(0.0f, 0.0f, 0.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+        if(mainRenderHeight>0)
         projection = glm::perspective(glm::radians(45.0f), static_cast<float>(mainRenderWidth) / static_cast<float>(mainRenderHeight), 0.1f, 100.0f);
+
+        // Set the projection and view matrix uniforms in the shader
+        glUseProgram(shaderProgram);
+        GLint projectionLoc = glGetUniformLocation(shaderProgram, "projection");
+        glUniformMatrix4fv(projectionLoc, 1, GL_FALSE, glm::value_ptr(projection));
+        GLint viewLoc = glGetUniformLocation(shaderProgram, "view");
+        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
 
         glViewport(0, 0, mainRenderWidth, mainRenderHeight);
         glPointSize(5.f);
+
         // Rendering logic based on selected test case
         switch (currentTestCase)
         {
