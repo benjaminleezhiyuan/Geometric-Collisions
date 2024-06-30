@@ -224,6 +224,11 @@ std::vector<float> scales;
 std::vector<GLuint> bboxVAOs, bboxVBOs;
 std::vector<std::vector<glm::vec3>> bboxVertices;
 
+// Bounding sphere variables
+std::vector<glm::vec3> sphereCenters;
+std::vector<float> sphereRadii;
+std::vector<unsigned int> sphereVAOs, sphereVBOs;
+
 void loadModel(const std::string& path, float scale) {
     objl::Loader loader;
     if (loader.LoadFile(path)) {
@@ -256,6 +261,52 @@ void loadModel(const std::string& path, float scale) {
             VBOs.push_back(VBO);
             EBOs.push_back(EBO);
             scales.push_back(scale);
+
+            // Calculate bounding box
+            glm::vec3 min(FLT_MAX, FLT_MAX, FLT_MAX);
+            glm::vec3 max(FLT_MIN, FLT_MIN, FLT_MIN);
+            for (const auto& vertex : mesh.Vertices) {
+                min = glm::min(min, glm::vec3(vertex.Position.X, vertex.Position.Y, vertex.Position.Z));
+                max = glm::max(max, glm::vec3(vertex.Position.X, vertex.Position.Y, vertex.Position.Z));
+            }
+
+            std::vector<glm::vec3> bboxVertices = {
+                min,
+                glm::vec3(max.x, min.y, min.z),
+                glm::vec3(max.x, max.y, min.z),
+                glm::vec3(min.x, max.y, min.z),
+                glm::vec3(min.x, min.y, max.z),
+                glm::vec3(max.x, min.y, max.z),
+                glm::vec3(max.x, max.y, max.z),
+                glm::vec3(min.x, max.y, max.z)
+            };
+
+            std::vector<unsigned int> bboxIndices = {
+                0, 1, 1, 2, 2, 3, 3, 0,
+                4, 5, 5, 6, 6, 7, 7, 4,
+                0, 4, 1, 5, 2, 6, 3, 7
+            };
+
+            unsigned int bboxVAO, bboxVBO, bboxEBO;
+            glGenVertexArrays(1, &bboxVAO);
+            glGenBuffers(1, &bboxVBO);
+            glGenBuffers(1, &bboxEBO);
+
+            glBindVertexArray(bboxVAO);
+
+            glBindBuffer(GL_ARRAY_BUFFER, bboxVBO);
+            glBufferData(GL_ARRAY_BUFFER, bboxVertices.size() * sizeof(glm::vec3), &bboxVertices[0], GL_STATIC_DRAW);
+
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, bboxEBO);
+            glBufferData(GL_ELEMENT_ARRAY_BUFFER, bboxIndices.size() * sizeof(unsigned int), &bboxIndices[0], GL_STATIC_DRAW);
+
+            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+            glEnableVertexAttribArray(0);
+
+            glBindVertexArray(0);
+
+            bboxVAOs.push_back(bboxVAO);
+            bboxVBOs.push_back(bboxVBO);
         }
     }
 }
@@ -504,8 +555,7 @@ void assignment1()
     glfwPollEvents();
 }
 
-int main()
-{
+int main() {
     const unsigned int SCR_WIDTH = 1920;
     const unsigned int SCR_HEIGHT = 1080;
 
@@ -542,9 +592,6 @@ int main()
     // Set viewport
     glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
 
-    shader();
-    boundingshader();
-
     // Load all models from the specified directory with a specific scale
     loadModelsFromDirectory("../Assets/power4/part_a", 0.0001f);
     loadModelsFromDirectory("../Assets/power4/part_b", 0.0001f);
@@ -554,23 +601,23 @@ int main()
     loadModelsFromDirectory("../Assets/power6/part_a", 0.0001f);
     loadModelsFromDirectory("../Assets/power6/part_b", 0.0001f);
 
+
     // Enable depth test
     glEnable(GL_DEPTH_TEST);
-
+    shader();
     // Main loop
     while (!glfwWindowShouldClose(window)) {
         // Process input
         processInput(window);
 
-        glClearColor(0.1f, 0.1f, 0.1f, 1.0f);
-
+        glClearColor(1.f, 1.f, 1.f, 1.f);
         // Clear screen
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         // Use shader program
         glUseProgram(shaderProgram);
 
-        // Set transformations and uniforms
+        // Set view and projection matrices
         glm::mat4 view = glm::lookAt(cameraPos, cameraPos + cameraFront, cameraUp);
         glm::mat4 projection = glm::perspective(glm::radians(fov), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.1f, 100.0f);
 
@@ -581,7 +628,7 @@ int main()
         glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projection));
 
         // Set light and view positions
-        glUniform3f(glGetUniformLocation(shaderProgram, "lightPos"), -30.f, 50.0f, 10.0f);
+        glUniform3f(glGetUniformLocation(shaderProgram, "lightPos"), -30.f, 50.0f, 20.0f);
         glUniform3f(glGetUniformLocation(shaderProgram, "viewPos"), cameraPos.x, cameraPos.y, cameraPos.z);
         glUniform3f(glGetUniformLocation(shaderProgram, "lightColor"), 1.0f, 1.0f, 1.0f);
         glUniform3f(glGetUniformLocation(shaderProgram, "objectColor"), 1.0f, 0.5f, 0.31f);
@@ -598,6 +645,20 @@ int main()
             glBindVertexArray(0);
         }
 
+        // Draw bounding boxes
+        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); // Wireframe mode
+        for (size_t i = 0; i < bboxVAOs.size(); ++i) {
+            glm::mat4 model = glm::mat4(1.0f);
+            model = glm::scale(model, glm::vec3(scales[i], scales[i], scales[i]));
+            int modelLoc = glGetUniformLocation(shaderProgram, "model");
+            glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+
+            glBindVertexArray(bboxVAOs[i]);
+            glDrawElements(GL_LINES, 24, GL_UNSIGNED_INT, 0); // 24 indices for the bounding box lines
+            glBindVertexArray(0);
+        }
+        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL); // Reset to fill mode
+
         // Swap buffers and poll events
         glfwSwapBuffers(window);
         glfwPollEvents();
@@ -608,9 +669,10 @@ int main()
         glDeleteVertexArrays(1, &VAOs[i]);
         glDeleteBuffers(1, &VBOs[i]);
         glDeleteBuffers(1, &EBOs[i]);
+        glDeleteVertexArrays(1, &bboxVAOs[i]);
+        glDeleteBuffers(1, &bboxVBOs[i]);
     }
     glDeleteProgram(shaderProgram);
-    glDeleteProgram(boundingshaderProgram);
 
     // Terminate GLFW
     glfwTerminate();
