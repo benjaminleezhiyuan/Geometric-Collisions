@@ -9,6 +9,7 @@
 #include "classes.h"
 
 extern GLuint shaderProgram;
+extern GLuint boundingshaderProgram;
 
 extern glm::mat4 view;
 extern glm::mat4 projection;
@@ -17,6 +18,7 @@ extern GLFWwindow* window;
 extern bool animate;
 
 void shader();
+void boundingshader();
 void spheremake();
 void boxmake();
 void SphereVsSphere(Sphere Sphere1, Sphere Sphere2);

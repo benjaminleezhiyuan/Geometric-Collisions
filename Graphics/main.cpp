@@ -36,6 +36,7 @@ GLFWwindow* window;
 
 GLuint shaderProgram;
 GLuint VBO, VAO, EBO;
+GLuint boundingshaderProgram;
 
 bool animate = true;
 
@@ -605,6 +606,7 @@ int main()
     glViewport(0, 0, SCR_WIDTH, SCR_HEIGHT);
 
     shader();
+    boundingshader();
 
     // Load all models from the specified directory with a specific scale
     loadModelsFromDirectory("../Assets/power4/part_a", 0.0001f);
@@ -657,8 +659,25 @@ int main()
             glBindVertexArray(VAOs[i]);
             glDrawElements(GL_TRIANGLES, meshes[i].Indices.size(), GL_UNSIGNED_INT, 0);
             glBindVertexArray(0);
+        }
 
-            // Render the AABB
+        // Use line shader program for drawing AABBs
+        glUseProgram(boundingshaderProgram);
+
+        // Set view and projection matrices for line shader
+        viewLoc = glGetUniformLocation(boundingshaderProgram, "view");
+        projLoc = glGetUniformLocation(boundingshaderProgram, "projection");
+
+        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
+        glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projection));
+
+        // Draw AABBs
+        for (size_t i = 0; i < aabbs.size(); ++i) {
+            glm::mat4 model = glm::mat4(1.0f);
+            //model = glm::scale(model, glm::vec3(scales[i], scales[i], scales[i]));
+            int modelLoc = glGetUniformLocation(boundingshaderProgram, "model");
+            glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+
             glBindVertexArray(aabbs[i].VAO);
             glDrawElements(GL_LINES, 24, GL_UNSIGNED_INT, 0);
             glBindVertexArray(0);
@@ -676,6 +695,7 @@ int main()
         glDeleteBuffers(1, &EBOs[i]);
     }
     glDeleteProgram(shaderProgram);
+    glDeleteProgram(boundingshaderProgram);
 
     // Terminate GLFW
     glfwTerminate();
