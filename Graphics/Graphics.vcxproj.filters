@@ -33,5 +33,6 @@
   <ItemGroup>
     <ClInclude Include="classes.h" />
     <ClInclude Include="helper.h" />
+    <ClInclude Include="..\OBJ_Loader.h" />
   </ItemGroup>
 </Project>

@@ -7,35 +7,68 @@ std::vector<float> boxVertices;
 std::vector<unsigned int> boxIndices;
 GLuint boxVBO, boxVAO, boxEBO;
 
+
 void shader()
 {
     // Vertex shader source code
     const char* vertexShaderSource = R"(
     #version 330 core
-    layout (location = 0) in vec3 aPos;
-
+    layout(location = 0) in vec3 aPos;
+    layout(location = 1) in vec3 aNormal;
+    layout(location = 2) in vec2 aTexCoord;
+    
+    out vec3 FragPos;
+    out vec3 Normal;
+    out vec2 TexCoord;
+    
     uniform mat4 model;
     uniform mat4 view;
     uniform mat4 projection;
-    uniform float pointSize;
     
     void main()
     {
-        gl_Position = projection * view * model * vec4(aPos, 1.0);
-        //gl_PointSize = pointSize;
+        FragPos = vec3(model * vec4(aPos, 1.0));
+        Normal = mat3(transpose(inverse(model))) * aNormal;
+        TexCoord = aTexCoord;
+        
+        gl_Position = projection * view * vec4(FragPos, 1.0);
     }
     )";
 
-    // Fragment shader source code
     const char* fragmentShaderSource = R"(
     #version 330 core
     out vec4 FragColor;
-
-    uniform vec3 color;
-
+    
+    in vec3 FragPos;
+    in vec3 Normal;
+    in vec2 TexCoord;
+    
+    uniform vec3 lightPos;
+    uniform vec3 viewPos;
+    uniform vec3 lightColor;
+    uniform vec3 objectColor;
+    
     void main()
     {
-        FragColor = vec4(color, 1.0);
+        // Ambient
+        float ambientStrength = 0.1;
+        vec3 ambient = ambientStrength * lightColor;
+        
+        // Diffuse 
+        vec3 norm = normalize(Normal);
+        vec3 lightDir = normalize(lightPos - FragPos);
+        float diff = max(dot(norm, lightDir), 0.0);
+        vec3 diffuse = diff * lightColor;
+        
+        // Specular
+        float specularStrength = 0.5;
+        vec3 viewDir = normalize(viewPos - FragPos);
+        vec3 reflectDir = reflect(-lightDir, norm);
+        float spec = pow(max(dot(viewDir, reflectDir), 0.0), 32);
+        vec3 specular = specularStrength * spec * lightColor;
+        
+        vec3 result = (ambient + diffuse + specular) * objectColor;
+        FragColor = vec4(result, 1.0);
     }
     )";
 
@@ -1389,11 +1422,6 @@ void RayVsSphere( Ray ray, Sphere sphere1)
     glDeleteBuffers(1, &rayVBO);
 }
 
-void processInput(GLFWwindow* window)
-{
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
-        glfwSetWindowShouldClose(window, true);
-}
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height)
 {

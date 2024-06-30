@@ -9,6 +9,7 @@
 #include "classes.h"
 
 extern GLuint shaderProgram;
+
 extern glm::mat4 view;
 extern glm::mat4 projection;
 extern float rayLength;
@@ -34,7 +35,6 @@ void RayVsAABB( Ray ray, AABB aabb);
 void RayVsSphere( Ray ray, Sphere sphere1);
 
 
-void processInput(GLFWwindow* window);
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
 
 bool checkIntersection(const Sphere& sphere1, const Sphere& sphere2);

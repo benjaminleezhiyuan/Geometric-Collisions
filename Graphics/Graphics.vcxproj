@@ -103,7 +103,7 @@
     <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);C:\glfw\include;C:\glew\include;C:\glm</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);$(SolutionDir)\glfw\include;$(SolutionDir)\glew\include;$(SolutionDir)\glm;$(SolutionDir)\imgui-master;$(SolutionDir)\imgui-master\backends</IncludePath>
+    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);$(SolutionDir)\glfw\include;$(SolutionDir)\glew\include;$(SolutionDir)\glm;$(SolutionDir)\imgui-master;$(SolutionDir)\imgui-master\backends;$(SolutionDir)</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);C:\glfw\include;C:\glew\include;C:\glm</IncludePath>
@@ -112,7 +112,7 @@
     <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);C:\glfw\include;C:\glew\include;C:\glm</IncludePath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);$(SolutionDir)\glfw\include;$(SolutionDir)\glew\include;$(SolutionDir)\glm;$(SolutionDir)\imgui-master;$(SolutionDir)\imgui-master\backends</IncludePath>
+    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);$(SolutionDir)\glfw\include;$(SolutionDir)\glew\include;$(SolutionDir)\glm;$(SolutionDir)\imgui-master;$(SolutionDir)\imgui-master\backends;$(SolitionDir)</IncludePath>
     <IntDir>$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Zip Release|x64'">
@@ -227,6 +227,7 @@ powershell Compress-Archive -Path "..\CGFW" -Update -DestinationPath ..\CGFW_$([
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(SolutionDir)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -254,6 +255,7 @@ xcopy /y "$(SolutionDir)glfw\lib-vc2022\glfw3.dll" "$(TargetDir)"
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>$(SolutionDir)</AdditionalIncludeDirectories>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -324,6 +326,7 @@ powershell Compress-Archive -Path "..\CGFW" -Update -DestinationPath ..\CGFW_$([
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\OBJ_Loader.h" />
     <ClInclude Include="classes.h" />
     <ClInclude Include="helper.h" />
   </ItemGroup>

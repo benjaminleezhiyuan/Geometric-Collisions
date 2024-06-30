@@ -1,5 +1,6 @@
 #pragma once
 #include <glm/glm.hpp>
+
 struct Point
 {
     glm::vec3 coordinates;
@@ -29,6 +30,7 @@ struct AABB
     glm::vec3 halfExtents;
     glm::vec3 min;
     glm::vec3 max;
+    GLuint VAO, VBO, EBO;
 };
 
 struct Ray
