@@ -216,71 +216,13 @@ float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 
 // Containers for multiple models
-std::vector<unsigned int> VAOs, VBOs, EBOs;
+std::vector<GLuint> VAOs, VBOs, EBOs;
 std::vector<objl::Mesh> meshes;
 std::vector<float> scales;
-std::vector<AABB> aabbs;
 
-AABB computeAABB(const objl::Mesh& mesh) {
-    glm::vec3 min(FLT_MAX, FLT_MAX, FLT_MAX);
-    glm::vec3 max(-FLT_MAX, -FLT_MAX, -FLT_MAX);
-
-    for (const auto& vertex : mesh.Vertices) {
-        if (vertex.Position.X < min.x) min.x = vertex.Position.X;
-        if (vertex.Position.Y < min.y) min.y = vertex.Position.Y;
-        if (vertex.Position.Z < min.z) min.z = vertex.Position.Z;
-
-        if (vertex.Position.X > max.x) max.x = vertex.Position.X;
-        if (vertex.Position.Y > max.y) max.y = vertex.Position.Y;
-        if (vertex.Position.Z > max.z) max.z = vertex.Position.Z;
-    }
-
-    return { min, max };
-}
-
-void createAABBVAO(AABB& aabb) {
-    glm::vec3 min = aabb.min;
-    glm::vec3 max = aabb.max;
-
-    float vertices[] = {
-        // Positions
-        min.x, min.y, min.z,  // 0
-        max.x, min.y, min.z,  // 1
-        max.x, max.y, min.z,  // 2
-        min.x, max.y, min.z,  // 3
-        min.x, min.y, max.z,  // 4
-        max.x, min.y, max.z,  // 5
-        max.x, max.y, max.z,  // 6
-        min.x, max.y, max.z   // 7
-    };
-
-    unsigned int indices[] = {
-        // Front face
-        0, 1, 1, 2, 2, 3, 3, 0,
-        // Back face
-        4, 5, 5, 6, 6, 7, 7, 4,
-        // Connecting edges
-        0, 4, 1, 5, 2, 6, 3, 7
-    };
-
-    glGenVertexArrays(1, &aabb.VAO);
-    glGenBuffers(1, &aabb.VBO);
-
-    glBindVertexArray(aabb.VAO);
-
-    glBindBuffer(GL_ARRAY_BUFFER, aabb.VBO);
-    glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-    glGenBuffers(1, &aabb.EBO);
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, aabb.EBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
-
-    glBindVertexArray(0);
-}
+// Bounding box variables
+std::vector<GLuint> bboxVAOs, bboxVBOs;
+std::vector<std::vector<glm::vec3>> bboxVertices;
 
 void loadModel(const std::string& path, float scale) {
     objl::Loader loader;
@@ -314,11 +256,6 @@ void loadModel(const std::string& path, float scale) {
             VBOs.push_back(VBO);
             EBOs.push_back(EBO);
             scales.push_back(scale);
-
-            // Compute and store AABB
-            AABB aabb = computeAABB(mesh);
-            createAABBVAO(aabb);
-            aabbs.push_back(aabb);
         }
     }
 }
@@ -610,12 +547,12 @@ int main()
 
     // Load all models from the specified directory with a specific scale
     loadModelsFromDirectory("../Assets/power4/part_a", 0.0001f);
-   /* loadModelsFromDirectory("../Assets/power4/part_b", 0.0001f);
+    loadModelsFromDirectory("../Assets/power4/part_b", 0.0001f);
     loadModelsFromDirectory("../Assets/power5/part_a", 0.0001f);
     loadModelsFromDirectory("../Assets/power5/part_b", 0.0001f);
     loadModelsFromDirectory("../Assets/power5/part_c", 0.0001f);
     loadModelsFromDirectory("../Assets/power6/part_a", 0.0001f);
-    loadModelsFromDirectory("../Assets/power6/part_b", 0.0001f);*/
+    loadModelsFromDirectory("../Assets/power6/part_b", 0.0001f);
 
     // Enable depth test
     glEnable(GL_DEPTH_TEST);
@@ -658,28 +595,6 @@ int main()
 
             glBindVertexArray(VAOs[i]);
             glDrawElements(GL_TRIANGLES, meshes[i].Indices.size(), GL_UNSIGNED_INT, 0);
-            glBindVertexArray(0);
-        }
-
-        // Use line shader program for drawing AABBs
-        glUseProgram(boundingshaderProgram);
-
-        // Set view and projection matrices for line shader
-        viewLoc = glGetUniformLocation(boundingshaderProgram, "view");
-        projLoc = glGetUniformLocation(boundingshaderProgram, "projection");
-
-        glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
-        glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projection));
-
-        // Draw AABBs
-        for (size_t i = 0; i < aabbs.size(); ++i) {
-            glm::mat4 model = glm::mat4(1.0f);
-            //model = glm::scale(model, glm::vec3(scales[i], scales[i], scales[i]));
-            int modelLoc = glGetUniformLocation(boundingshaderProgram, "model");
-            glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-
-            glBindVertexArray(aabbs[i].VAO);
-            glDrawElements(GL_LINES, 24, GL_UNSIGNED_INT, 0);
             glBindVertexArray(0);
         }
 
