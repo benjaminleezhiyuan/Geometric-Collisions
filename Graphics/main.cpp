@@ -18,6 +18,7 @@
 GLFWwindow* window;
 
 GLuint shaderProgram;
+GLuint bvShaderProgram;
 GLuint VBO, VAO, EBO;
 
 objl::Loader loader;
@@ -555,6 +556,7 @@ int main() {
     // Enable depth test
     glEnable(GL_DEPTH_TEST);
     shader();
+    bvShader();
 
     // Initialize ImGui
     IMGUI_CHECKVERSION();
@@ -623,14 +625,28 @@ int main() {
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
+        // Use bounding volume shader program
+        glUseProgram(bvShaderProgram);
+
+        // Set view and projection matrices for bounding volumes
+        glUniformMatrix4fv(glGetUniformLocation(bvShaderProgram, "view"), 1, GL_FALSE, glm::value_ptr(view));
+        glUniformMatrix4fv(glGetUniformLocation(bvShaderProgram, "projection"), 1, GL_FALSE, glm::value_ptr(projection));
+
+        // Set the color for bounding volumes
+        glm::vec3 bboxColor(0.0f, 0.0f, 1.0f); // Blue for bounding box
+        glm::vec3 ritterSphereColor(1.0f, 0.0f, 0.0f); // Red for Ritter sphere
+        glm::vec3 larssonSphereColor(0.0f, 1.0f, 0.0f); // Green for Larsson sphere
+        glm::vec3 pcaSphereColor(1.0f, 1.0f, 0.0f); // Yellow for PCA sphere
+
         // Render bounding volumes based on selection
         switch (selectedBoundingVolumeType) {
         case BOUNDING_BOX:
+            glUniform3f(glGetUniformLocation(bvShaderProgram, "boundingVolumeColor"), bboxColor.r, bboxColor.g, bboxColor.b); // Set bounding box color
             glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); // Wireframe mode
             for (size_t i = 0; i < bboxVAOs.size(); ++i) {
                 glm::mat4 model = glm::mat4(1.0f);
                 model = glm::scale(model, glm::vec3(scales[i], scales[i], scales[i]));
-                int modelLoc = glGetUniformLocation(shaderProgram, "model");
+                int modelLoc = glGetUniformLocation(bvShaderProgram, "model");
                 glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
 
                 glBindVertexArray(bboxVAOs[i]);
@@ -641,11 +657,12 @@ int main() {
             break;
 
         case RITTER_SPHERE:
+            glUniform3f(glGetUniformLocation(bvShaderProgram, "boundingVolumeColor"), ritterSphereColor.r, ritterSphereColor.g, ritterSphereColor.b); // Set Ritter sphere color
             glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); // Wireframe mode
             for (size_t i = 0; i < ritterSphereVAOs.size(); ++i) {
                 glm::mat4 model = glm::mat4(1.0f);
                 model = glm::scale(model, glm::vec3(scales[i], scales[i], scales[i]));
-                int modelLoc = glGetUniformLocation(shaderProgram, "model");
+                int modelLoc = glGetUniformLocation(bvShaderProgram, "model");
                 glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
 
                 glBindVertexArray(ritterSphereVAOs[i]);
@@ -656,11 +673,12 @@ int main() {
             break;
 
         case LARSSON_SPHERE:
+            glUniform3f(glGetUniformLocation(bvShaderProgram, "boundingVolumeColor"), larssonSphereColor.r, larssonSphereColor.g, larssonSphereColor.b); // Set Larsson sphere color
             glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); // Wireframe mode
             for (size_t i = 0; i < larssonSphereVAOs.size(); ++i) {
                 glm::mat4 model = glm::mat4(1.0f);
                 model = glm::scale(model, glm::vec3(scales[i], scales[i], scales[i]));
-                int modelLoc = glGetUniformLocation(shaderProgram, "model");
+                int modelLoc = glGetUniformLocation(bvShaderProgram, "model");
                 glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
 
                 glBindVertexArray(larssonSphereVAOs[i]);
@@ -671,11 +689,12 @@ int main() {
             break;
 
         case PCA_SPHERE:
+            glUniform3f(glGetUniformLocation(bvShaderProgram, "boundingVolumeColor"), pcaSphereColor.r, pcaSphereColor.g, pcaSphereColor.b); // Set PCA sphere color
             glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); // Wireframe mode
             for (size_t i = 0; i < pcaSphereVAOs.size(); ++i) {
                 glm::mat4 model = glm::mat4(1.0f);
                 model = glm::scale(model, glm::vec3(scales[i], scales[i], scales[i]));
-                int modelLoc = glGetUniformLocation(shaderProgram, "model");
+                int modelLoc = glGetUniformLocation(bvShaderProgram, "model");
                 glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
 
                 glBindVertexArray(pcaSphereVAOs[i]);

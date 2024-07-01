@@ -9,6 +9,7 @@
 #include "classes.h"
 
 extern GLuint shaderProgram;
+extern GLuint bvShaderProgram;
 
 extern glm::mat4 view;
 extern glm::mat4 projection;
@@ -16,5 +17,6 @@ extern glm::mat4 projection;
 extern GLFWwindow* window;
 
 void shader();
+void bvShader();
 
 void framebuffer_size_callback(GLFWwindow* window, int width, int height);
