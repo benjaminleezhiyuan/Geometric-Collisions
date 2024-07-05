@@ -621,10 +621,6 @@ int main() {
         ImGui::Combo("Bounding Volume Type", reinterpret_cast<int*>(&selectedBoundingVolumeType), boundingVolumeOptions, IM_ARRAYSIZE(boundingVolumeOptions));
         ImGui::End();
 
-        // Render ImGui
-        ImGui::Render();
-        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
         // Use bounding volume shader program
         glUseProgram(bvShaderProgram);
 
@@ -708,6 +704,10 @@ int main() {
         default:
             break;
         }
+
+        // Render ImGui
+        ImGui::Render();
+        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
         // Swap buffers and poll events
         glfwSwapBuffers(window);
