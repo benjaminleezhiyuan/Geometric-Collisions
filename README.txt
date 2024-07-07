@@ -1,4 +1,4 @@
-a.) Launch program using Release Mode. To load models, put them into the Assets folder and use scale of 0.0001f. (See Line 976 in main)
+a.) Launch program using Release Mode. To load models, put them into the Assets folder and use scale of 0.0001f. (See Line 999 in main)
     Move around using WASD and Right Click drag to move the camera.
     I have included powerplant4-powerplant6 in the submission.
     You are able to pick topdown or bottomup construction using the imgui window.
