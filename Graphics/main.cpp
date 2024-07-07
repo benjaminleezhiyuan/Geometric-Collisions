@@ -166,8 +166,8 @@ void TopDownTree(TreeNode* node, std::vector<Object>& objects, int numObjects, i
     node->larssonVolume = ComputeBV(objects, BVT_LARSSON_SPHERE);
     node->pcaVolume = ComputeBV(objects, BVT_PCA_SPHERE);
 
-
-    if (numObjects <= MIN_OBJECTS_AT_LEAF) {
+    // Restrict the depth of the tree to 7
+    if (numObjects <= MIN_OBJECTS_AT_LEAF || depth >= 7) {
         node->type = LEAF;
         node->objects = objects.data();
         node->numObjects = numObjects;
