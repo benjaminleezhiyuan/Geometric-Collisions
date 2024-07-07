@@ -74,49 +74,6 @@ void loadModel(const std::string& path, float scale) {
             VBOs.push_back(VBO);
             EBOs.push_back(EBO);
             scales.push_back(scale);
-
-            // Calculate bounding box
-            glm::vec3 min(FLT_MAX, FLT_MAX, FLT_MAX);
-            glm::vec3 max(FLT_MIN, FLT_MIN, FLT_MIN);
-            for (const auto& vertex : mesh.Vertices) {
-                min = glm::min(min, glm::vec3(vertex.Position.X, vertex.Position.Y, vertex.Position.Z));
-                max = glm::max(max, glm::vec3(vertex.Position.X, vertex.Position.Y, vertex.Position.Z));
-            }
-
-            std::vector<glm::vec3> bboxVertices = {
-                min,
-                glm::vec3(max.x, min.y, min.z),
-                glm::vec3(max.x, max.y, min.z),
-                glm::vec3(min.x, max.y, min.z),
-                glm::vec3(min.x, min.y, max.z),
-                glm::vec3(max.x, min.y, max.z),
-                glm::vec3(max.x, max.y, max.z),
-                glm::vec3(min.x, max.y, max.z)
-            };
-
-            std::vector<unsigned int> bboxIndices = {
-                0, 1, 1, 2, 2, 3, 3, 0,
-                4, 5, 5, 6, 6, 7, 7, 4,
-                0, 4, 1, 5, 2, 6, 3, 7
-            };
-
-            unsigned int bboxVAO, bboxVBO, bboxEBO;
-            glGenVertexArrays(1, &bboxVAO);
-            glGenBuffers(1, &bboxVBO);
-            glGenBuffers(1, &bboxEBO);
-
-            glBindVertexArray(bboxVAO);
-
-            glBindBuffer(GL_ARRAY_BUFFER, bboxVBO);
-            glBufferData(GL_ARRAY_BUFFER, bboxVertices.size() * sizeof(glm::vec3), &bboxVertices[0], GL_STATIC_DRAW);
-
-            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, bboxEBO);
-            glBufferData(GL_ELEMENT_ARRAY_BUFFER, bboxIndices.size() * sizeof(unsigned int), &bboxIndices[0], GL_STATIC_DRAW);
-
-            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-            glEnableVertexAttribArray(0);
-
-            glBindVertexArray(0);
         }
     }
 }
