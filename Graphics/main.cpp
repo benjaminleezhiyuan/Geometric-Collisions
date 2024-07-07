@@ -17,7 +17,7 @@
 
 
 
-#define MIN_OBJECTS_AT_LEAF 4
+#define MIN_OBJECTS_AT_LEAF 1
 
 GLFWwindow* window;
 
@@ -918,7 +918,7 @@ int main() {
         if (ImGui::RadioButton("PCA Sphere", currentBVType == BVT_PCA_SPHERE)) {
             currentBVType = BVT_PCA_SPHERE;
         }
-        ImGui::SliderInt("Tree Level", &currentLevel, 0, std::min(maxD-1,7)); // Adjust the maximum level as needed
+        ImGui::SliderInt("Tree Level", &currentLevel, 0, std::min(maxD,7)); // Adjust the maximum level as needed
         ImGui::End();
 
         glClearColor(0.4f, 0.4f, 0.4f, 1.f);
