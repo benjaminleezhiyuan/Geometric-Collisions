@@ -329,6 +329,7 @@ powershell Compress-Archive -Path "..\CGFW" -Update -DestinationPath ..\CGFW_$([
     <ClInclude Include="..\OBJ_Loader.h" />
     <ClInclude Include="classes.h" />
     <ClInclude Include="helper.h" />
+    <ClInclude Include="main.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

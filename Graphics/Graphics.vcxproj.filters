@@ -34,5 +34,6 @@
     <ClInclude Include="classes.h" />
     <ClInclude Include="helper.h" />
     <ClInclude Include="..\OBJ_Loader.h" />
+    <ClInclude Include="main.h" />
   </ItemGroup>
 </Project>

@@ -20,7 +20,6 @@ GLFWwindow* window;
 
 GLuint shaderProgram;
 GLuint bvShaderProgram;
-GLuint VBO, VAO, EBO;
 
 objl::Loader loader;
 
@@ -43,6 +42,9 @@ std::vector<GLuint> VAOs, VBOs, EBOs;
 std::vector<objl::Mesh> meshes;
 std::vector<float> scales;
 
+int currentLevel = 0;
+std::vector<GLuint> bboxVAOs, bboxVBOs, bboxEBOs;
+
 // Define the AABB structure
 struct AABB {
     glm::vec3 min;
@@ -60,7 +62,8 @@ enum NodeType { INTERNAL, LEAF };
 
 struct TreeNode {
     NodeType type;
-    AABB boundingVolume;
+    AABB aabbVolume;
+    GLuint test1, test2, test3;
     Object* objects; // pointer to objects/BVs that the node represents
     int numObjects; // How many objects in this subtree?
     TreeNode* lChild;
@@ -92,7 +95,7 @@ int PartitionObjects(std::vector<Object>& objects, int numObjects) {
 }
 
 void TopDownTree(TreeNode* node, std::vector<Object>& objects, int numObjects) {
-    node->boundingVolume = ComputeBV(objects);
+    node->aabbVolume = ComputeBV(objects);
 
     if (numObjects <= MIN_OBJECTS_AT_LEAF) {
         node->type = LEAF;
@@ -129,6 +132,48 @@ AABB ComputeAABB(const objl::Mesh& mesh) {
     return aabb;
 }
 
+void CreateAABBVertices(const AABB& aabb) {
+    glm::vec3 min = aabb.min;
+    glm::vec3 max = aabb.max;
+
+    std::vector<glm::vec3> bboxVertices = {
+                min,
+                glm::vec3(max.x, min.y, min.z),
+                glm::vec3(max.x, max.y, min.z),
+                glm::vec3(min.x, max.y, min.z),
+                glm::vec3(min.x, min.y, max.z),
+                glm::vec3(max.x, min.y, max.z),
+                glm::vec3(max.x, max.y, max.z),
+                glm::vec3(min.x, max.y, max.z)
+    };
+
+    std::vector<unsigned int> bboxIndices = {
+                0, 1, 1, 2, 2, 3, 3, 0,
+                4, 5, 5, 6, 6, 7, 7, 4,
+                0, 4, 1, 5, 2, 6, 3, 7
+    };
+
+    unsigned int bboxVAO, bboxVBO, bboxEBO;
+    glGenVertexArrays(1, &bboxVAO);
+    glGenBuffers(1, &bboxVBO);
+    glGenBuffers(1, &bboxEBO);
+
+    glBindVertexArray(bboxVAO);
+
+    glBindBuffer(GL_ARRAY_BUFFER, bboxVBO);
+    glBufferData(GL_ARRAY_BUFFER, bboxVertices.size() * sizeof(glm::vec3), &bboxVertices[0], GL_STATIC_DRAW);
+
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, bboxEBO);
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER, bboxIndices.size() * sizeof(unsigned int), &bboxIndices[0], GL_STATIC_DRAW);
+
+    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+    glEnableVertexAttribArray(0);
+
+    glBindVertexArray(0);
+    bboxVAOs.push_back(bboxVAO);
+    bboxVBOs.push_back(bboxVBO);
+}
+
 void loadModel(const std::string& path, float scale) {
     objl::Loader loader;
     if (loader.LoadFile(path)) {
@@ -138,7 +183,7 @@ void loadModel(const std::string& path, float scale) {
             obj.boundingBox = ComputeAABB(mesh);
             // Optionally, you can store other mesh-related data in the Object structure
             // e.g., obj.mesh = mesh;
-
+           
             // Add the object to the vector
             objects.push_back(obj);
 
@@ -248,6 +293,44 @@ void processInput(GLFWwindow* window)
         cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * speed;
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
         cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * speed;
+
+    // Update AABB level
+    if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS)
+        currentLevel++;
+    if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS)
+        currentLevel = std::max(0, currentLevel - 1); // Ensure level does not go below 0
+}
+
+int aabbIt = 0;
+void DrawAABB(TreeNode* node, GLuint bvShaderProgram) {
+    if (!node) return;
+
+    std::vector<glm::vec3> vertices;
+    std::vector<GLuint> indices;
+    CreateAABBVertices(node->aabbVolume);
+
+    glUniform3f(glGetUniformLocation(bvShaderProgram, "boundingVolumeColor"), 1,0,0); // Set bounding box color
+    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE); // Wireframe mode
+    
+    glm::mat4 model = glm::mat4(1.0f);
+    model = glm::scale(model, glm::vec3(0.0001f,0.0001f,0.0001f));
+    int modelLoc = glGetUniformLocation(bvShaderProgram, "model");
+    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+
+    glBindVertexArray(bboxVAOs[aabbIt]);
+    glDrawElements(GL_LINES, 24, GL_UNSIGNED_INT, 0); // 24 indices for the bounding box lines
+    glBindVertexArray(0);
+    
+    glPolygonMode(GL_FRONT_AND_BACK, GL_FILL); // Reset to fill mode
+
+    if (aabbIt < bboxVAOs.size())
+    {
+        aabbIt++;
+    }
+
+    // Recursively draw children
+    DrawAABB(node->lChild, bvShaderProgram);
+    DrawAABB(node->rChild, bvShaderProgram);
 }
 
 int main() {
@@ -346,6 +429,9 @@ int main() {
             glDrawElements(GL_TRIANGLES, meshes[i].Indices.size(), GL_UNSIGNED_INT, 0);
             glBindVertexArray(0);
         }
+
+        // Draw AABBs
+        DrawAABB(root, bvShaderProgram);
 
         // Swap buffers and poll events
         glfwSwapBuffers(window);
