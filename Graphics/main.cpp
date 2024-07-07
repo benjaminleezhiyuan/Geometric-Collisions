@@ -150,6 +150,12 @@ enum BoundingVolumeType {
     BVT_PCA_SPHERE
 };
 
+struct BoundingVolumeCost {
+    float distance;
+    float combinedVolume;
+    float relativeVolumeIncrease;
+};
+
 ConstructionMethod currentMethod = CM_TOP_DOWN;
 BoundingVolumeType currentBVType = BVT_NONE;
 bool displayAllLevels = false;
@@ -168,18 +174,35 @@ float Volume(const AABB& aabb) {
     return size.x * size.y * size.z;
 }
 
+BoundingVolumeCost CalculateBoundingVolumeCost(const TreeNode* a, const TreeNode* b) {
+    glm::vec3 centerA = (a->aabbVolume.min + a->aabbVolume.max) * 0.5f;
+    glm::vec3 centerB = (b->aabbVolume.min + b->aabbVolume.max) * 0.5f;
+    float distance = glm::distance(centerA, centerB);
+
+    AABB mergedAABB = MergeAABB(a->aabbVolume, b->aabbVolume);
+    float combinedVolume = Volume(mergedAABB);
+
+    float volumeA = Volume(a->aabbVolume);
+    float volumeB = Volume(b->aabbVolume);
+    float relativeVolumeIncrease = (combinedVolume - (volumeA + volumeB)) / (volumeA + volumeB);
+
+    return { distance, combinedVolume, relativeVolumeIncrease };
+}
+
 void FindNodesToMerge(std::vector<TreeNode*>& nodes, TreeNode*& first, TreeNode*& second) {
-    float minIncrease = std::numeric_limits<float>::max();
+    float minCost = std::numeric_limits<float>::max();
     int firstIndex = -1;
     int secondIndex = -1;
 
     for (size_t i = 0; i < nodes.size(); ++i) {
         for (size_t j = i + 1; j < nodes.size(); ++j) {
-            AABB mergedAABB = MergeAABB(nodes[i]->aabbVolume, nodes[j]->aabbVolume);
-            float increase = Volume(mergedAABB) - Volume(nodes[i]->aabbVolume) - Volume(nodes[j]->aabbVolume);
+            BoundingVolumeCost cost = CalculateBoundingVolumeCost(nodes[i], nodes[j]);
 
-            if (increase < minIncrease) {
-                minIncrease = increase;
+            // Combine the costs into a single heuristic value
+            float combinedCost = cost.distance + cost.combinedVolume + cost.relativeVolumeIncrease;
+
+            if (combinedCost < minCost) {
+                minCost = combinedCost;
                 firstIndex = i;
                 secondIndex = j;
             }
