@@ -154,6 +154,10 @@ ConstructionMethod currentMethod = CM_TOP_DOWN;
 BoundingVolumeType currentBVType = BVT_NONE;
 bool displayAllLevels = false;
 int currentLevel = 0;
+bool maxHeight = true;
+int maxHeightValue = 7;
+bool rebuildTree = true;
+bool prevMaxHeight = maxHeight; // Track the previous state of maxHeight checkbox
 
 BoundingSphere ComputeRitterSphere(const std::vector<Object>& objects);
 BoundingSphere ComputeLarssonSphere(const std::vector<Object>& objects);
@@ -239,7 +243,7 @@ std::vector<TreeNode*> InitializeLeafNodes(const std::vector<Object>& objects) {
     return nodes;
 }
 
-int PartitionObjects(std::vector<Object>& objects, int numObjects, int depth, int axis, float splitRatio = 0.5f) {
+int PartitionObjects(std::vector<Object>& objects, int numObjects, int depth, int axis, float splitRatio = 0.7f) {
     if (numObjects <= 1) {
         return 0;
     }
@@ -265,14 +269,14 @@ int PartitionObjects(std::vector<Object>& objects, int numObjects, int depth, in
     return k;
 }
 
-void TopDownTree(TreeNode* node, std::vector<Object>& objects, int numObjects, int depth) {
+void TopDownTree(TreeNode* node, std::vector<Object>& objects, int numObjects, int depth, int maxheightV) {
     node->aabbVolume = ComputeAABB(objects);
     node->ritterVolume = ComputeBV(objects, BVT_RITTER_SPHERE);
     node->larssonVolume = ComputeBV(objects, BVT_LARSSON_SPHERE);
     node->pcaVolume = ComputeBV(objects, BVT_PCA_SPHERE);
 
     // Restrict the depth of the tree to 7
-    if (numObjects <= MIN_OBJECTS_AT_LEAF || depth >= 7) {
+    if (numObjects <= MIN_OBJECTS_AT_LEAF || (depth >= maxheightV && maxHeight)) {
         node->type = LEAF;
         node->objects = objects.data();
         node->numObjects = numObjects;
@@ -290,8 +294,8 @@ void TopDownTree(TreeNode* node, std::vector<Object>& objects, int numObjects, i
         std::vector<Object> leftObjects(objects.begin(), objects.begin() + k);
         std::vector<Object> rightObjects(objects.begin() + k, objects.end());
 
-        TopDownTree(node->lChild, leftObjects, k, depth + 1);
-        TopDownTree(node->rChild, rightObjects, numObjects - k, depth + 1);
+        TopDownTree(node->lChild, leftObjects, k, depth + 1, maxheightV);
+        TopDownTree(node->rChild, rightObjects, numObjects - k, depth + 1, maxheightV);
     }
 }
 
@@ -983,7 +987,7 @@ int main() {
     TreeNode* botRoot = nullptr;
 
     // Build the Top-Down BVH
-    TopDownTree(topRoot, objects, objects.size(), 0);
+    TopDownTree(topRoot, objects, objects.size(), 0, maxHeightValue);
 
     // Build the Bottom-Up BVH
     std::vector<TreeNode*> leafNodes = InitializeLeafNodes(objects);
@@ -1026,14 +1030,19 @@ int main() {
             currentMethod = CM_BOTTOM_UP;
         }
 
-       
+        if (currentMethod == CM_TOP_DOWN) {
+            if (ImGui::Checkbox("Restrict Height to 7", &maxHeight)) {
+                rebuildTree = true; // Set rebuild flag if checkbox state changes
+                maxHeightValue = maxHeight ? 7 : INT_MAX;
+            }
+        }
+
         ImGui::Text("Bounding Volume Type:");
         const char* bvItems[] = { "None", "AABB", "Ritter Sphere", "Larsson Sphere", "PCA Sphere" };
         static int bvItem = 0; // default to "None"
         if (ImGui::Combo("##BVType", &bvItem, bvItems, IM_ARRAYSIZE(bvItems))) {
             currentBVType = static_cast<BoundingVolumeType>(bvItem);
         }
-        
 
         // Checkbox for displaying all levels
         ImGui::Checkbox("Display All Levels", &displayAllLevels);
@@ -1046,6 +1055,14 @@ int main() {
         glClearColor(0.4f, 0.4f, 0.4f, 1.f);
         // Clear screen
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+        // Rebuild the tree if needed
+        if (rebuildTree) {
+            delete topRoot;
+            topRoot = new TreeNode();
+            TopDownTree(topRoot, objects, objects.size(), 0, maxHeightValue);
+            rebuildTree = false; // Reset the rebuild flag
+        }
 
         // Use shader program
         glUseProgram(shaderProgram);
