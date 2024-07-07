@@ -24,6 +24,20 @@ GLFWwindow* window;
 GLuint shaderProgram;
 GLuint bvShaderProgram;
 
+int currentLevel = 0;
+
+std::vector<glm::vec3> levelColors = {
+    {1.0f, 0.0f, 0.0f}, // Red
+    {0.0f, 1.0f, 0.0f}, // Green
+    {0.0f, 0.0f, 1.0f}, // Blue
+    {1.0f, 1.0f, 0.0f}, // Yellow
+    {0.0f, 1.0f, 1.0f}, // Cyan
+    {1.0f, 0.0f, 1.0f}, // Magenta
+    {1.0f, 0.5f, 0.0f}, // Orange
+    {0.5f, 0.0f, 1.0f}, // Purple
+    {0.0f, 0.5f, 0.5f}  // Teal
+};
+
 objl::Loader loader;
 
 // Camera parameters
@@ -35,7 +49,7 @@ float yaw = -90.0f;
 float pitch = 0.0f;
 float lastX = 400, lastY = 300;
 float fov = 45.0f;
-bool leftMouseButtonPressed = false;
+bool rightMouseButtonPressed = false;
 float cameraSpeed = 2.5f;
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
@@ -59,6 +73,7 @@ struct Sphere {
 // Define the Object structure
 struct Object {
     AABB boundingBox;
+    std::vector<glm::vec3> vertices; // Store the vertices for more accurate bounding volume calculation
     // Other object data...
 };
 
@@ -245,26 +260,35 @@ Sphere ComputeRitterSphere(const std::vector<glm::vec3>& points) {
 Sphere ComputeLarssonSphere(const std::vector<glm::vec3>& points) {
     if (points.empty()) return { glm::vec3(0.0f), 0.0f };
 
-    // Start with a simple bounding sphere
-    glm::vec3 center = glm::vec3(0.0f);
+    // Calculate the bounding box
+    glm::vec3 minPoint = points[0];
+    glm::vec3 maxPoint = points[0];
+
+    for (const auto& point : points) {
+        minPoint = glm::min(minPoint, point);
+        maxPoint = glm::max(maxPoint, point);
+    }
+
+    // Start with the center of the bounding box
+    glm::vec3 center = (minPoint + maxPoint) * 0.5f;
     float radius = 0.0f;
 
-    for (const auto& point : points) {
-        center += point;
-    }
-    center /= points.size();
-
-    for (const auto& point : points) {
-        float dist = glm::distance(center, point);
-        radius = std::max(radius, dist);
-    }
-
-    // Modified Larsson's method for refining the sphere
+    // Calculate the initial radius
     for (const auto& point : points) {
         float dist = glm::distance(center, point);
         if (dist > radius) {
-            radius = (radius + dist) / 2.0f;
-            center = center + (point - center) * ((dist - radius) / dist);
+            radius = dist;
+        }
+    }
+
+    // Iteratively adjust the sphere to ensure all points are within the sphere
+    for (const auto& point : points) {
+        float dist = glm::distance(center, point);
+        if (dist > radius) {
+            float newRadius = (radius + dist) * 0.5f;
+            float k = (newRadius - radius) / dist;
+            radius = newRadius;
+            center += k * (point - center);
         }
     }
 
@@ -377,7 +401,7 @@ void loadModelsFromDirectory(const std::string& directory, float scale) {
 
 // Mouse callback
 void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
-    if (leftMouseButtonPressed) {
+    if (rightMouseButtonPressed) {
         if (firstMouse) {
             lastX = xpos;
             lastY = ypos;
@@ -411,12 +435,12 @@ void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
 
 // Mouse button callback
 void mouse_button_callback(GLFWwindow* window, int button, int action, int mods) {
-    if (button == GLFW_MOUSE_BUTTON_LEFT) {
+    if (button == GLFW_MOUSE_BUTTON_RIGHT) {
         if (action == GLFW_PRESS) {
-            leftMouseButtonPressed = true;
+            rightMouseButtonPressed = true;
         }
         else if (action == GLFW_RELEASE) {
-            leftMouseButtonPressed = false;
+            rightMouseButtonPressed = false;
             firstMouse = true;
         }
     }
@@ -652,6 +676,201 @@ void DrawPCASphere(TreeNode* node, GLuint bvShaderProgram) {
     DrawPCASphere(node->rChild, bvShaderProgram);
 }
 
+void DrawBoundingVolumesAtLevel(TreeNode* node, GLuint bvShaderProgram, int targetLevel, int currentLevel = 0) {
+    if (!node) return;
+
+    glm::vec3 color = levelColors[currentLevel % levelColors.size()];
+
+    if (currentLevel == targetLevel) {
+        if (currentBVType == BVT_AABB) {
+            std::vector<glm::vec3> vertices;
+            std::vector<GLuint> indices;
+            CreateAABBVertices(node->aabbVolume, vertices, indices);
+
+            GLuint bboxVAO, bboxVBO, bboxEBO;
+            glGenVertexArrays(1, &bboxVAO);
+            glGenBuffers(1, &bboxVBO);
+            glGenBuffers(1, &bboxEBO);
+
+            glBindVertexArray(bboxVAO);
+
+            glBindBuffer(GL_ARRAY_BUFFER, bboxVBO);
+            glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(glm::vec3), &vertices[0], GL_STATIC_DRAW);
+
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, bboxEBO);
+            glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLuint), &indices[0], GL_STATIC_DRAW);
+
+            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+            glEnableVertexAttribArray(0);
+
+            glUniform3f(glGetUniformLocation(bvShaderProgram, "boundingVolumeColor"), color.r, color.g, color.b); // Set AABB color
+            glm::mat4 model = glm::mat4(1.0f);
+            model = glm::scale(model, glm::vec3(0.0001f, 0.0001f, 0.0001f));
+            int modelLoc = glGetUniformLocation(bvShaderProgram, "model");
+            glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+
+            glBindVertexArray(bboxVAO);
+            glDrawElements(GL_LINES, indices.size(), GL_UNSIGNED_INT, 0);
+            glBindVertexArray(0);
+
+            glDeleteVertexArrays(1, &bboxVAO);
+            glDeleteBuffers(1, &bboxVBO);
+            glDeleteBuffers(1, &bboxEBO);
+        }
+        else if (currentBVType == BVT_RITTER_SPHERE) {
+            std::vector<glm::vec3> vertices;
+            std::vector<GLuint> indices;
+
+            // Collect points from the bounding box
+            std::vector<glm::vec3> points = {
+                node->aabbVolume.min,
+                glm::vec3(node->aabbVolume.max.x, node->aabbVolume.min.y, node->aabbVolume.min.z),
+                glm::vec3(node->aabbVolume.min.x, node->aabbVolume.max.y, node->aabbVolume.min.z),
+                glm::vec3(node->aabbVolume.min.x, node->aabbVolume.min.y, node->aabbVolume.max.z),
+                node->aabbVolume.max,
+                glm::vec3(node->aabbVolume.min.x, node->aabbVolume.max.y, node->aabbVolume.max.z),
+                glm::vec3(node->aabbVolume.max.x, node->aabbVolume.min.y, node->aabbVolume.max.z),
+                glm::vec3(node->aabbVolume.max.x, node->aabbVolume.max.y, node->aabbVolume.min.z)
+            };
+
+            Sphere sphere = ComputeRitterSphere(points);
+            CreateSphereVertices(sphere, vertices, indices);
+
+            GLuint sphereVAO, sphereVBO, sphereEBO;
+            glGenVertexArrays(1, &sphereVAO);
+            glGenBuffers(1, &sphereVBO);
+            glGenBuffers(1, &sphereEBO);
+
+            glBindVertexArray(sphereVAO);
+
+            glBindBuffer(GL_ARRAY_BUFFER, sphereVBO);
+            glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(glm::vec3), &vertices[0], GL_STATIC_DRAW);
+
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, sphereEBO);
+            glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLuint), &indices[0], GL_STATIC_DRAW);
+
+            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+            glEnableVertexAttribArray(0);
+
+            glUniform3f(glGetUniformLocation(bvShaderProgram, "boundingVolumeColor"), color.r, color.g, color.b); // Set sphere color
+            glm::mat4 model = glm::mat4(1.0f);
+            model = glm::scale(model, glm::vec3(0.0001f, 0.0001f, 0.0001f));
+            int modelLoc = glGetUniformLocation(bvShaderProgram, "model");
+            glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+
+            glBindVertexArray(sphereVAO);
+            glDrawElements(GL_LINES, indices.size(), GL_UNSIGNED_INT, 0);
+            glBindVertexArray(0);
+
+            glDeleteVertexArrays(1, &sphereVAO);
+            glDeleteBuffers(1, &sphereVBO);
+            glDeleteBuffers(1, &sphereEBO);
+        }
+        else if (currentBVType == BVT_LARSSON_SPHERE) {
+            std::vector<glm::vec3> vertices;
+            std::vector<GLuint> indices;
+
+            // Collect points from the bounding box
+            std::vector<glm::vec3> points = {
+                node->aabbVolume.min,
+                glm::vec3(node->aabbVolume.max.x, node->aabbVolume.min.y, node->aabbVolume.min.z),
+                glm::vec3(node->aabbVolume.min.x, node->aabbVolume.max.y, node->aabbVolume.min.z),
+                glm::vec3(node->aabbVolume.min.x, node->aabbVolume.min.y, node->aabbVolume.max.z),
+                node->aabbVolume.max,
+                glm::vec3(node->aabbVolume.min.x, node->aabbVolume.max.y, node->aabbVolume.max.z),
+                glm::vec3(node->aabbVolume.max.x, node->aabbVolume.min.y, node->aabbVolume.max.z),
+                glm::vec3(node->aabbVolume.max.x, node->aabbVolume.max.y, node->aabbVolume.min.z)
+            };
+
+            Sphere sphere = ComputeLarssonSphere(points);
+            CreateSphereVertices(sphere, vertices, indices);
+
+            GLuint sphereVAO, sphereVBO, sphereEBO;
+            glGenVertexArrays(1, &sphereVAO);
+            glGenBuffers(1, &sphereVBO);
+            glGenBuffers(1, &sphereEBO);
+
+            glBindVertexArray(sphereVAO);
+
+            glBindBuffer(GL_ARRAY_BUFFER, sphereVBO);
+            glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(glm::vec3), &vertices[0], GL_STATIC_DRAW);
+
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, sphereEBO);
+            glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLuint), &indices[0], GL_STATIC_DRAW);
+
+            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+            glEnableVertexAttribArray(0);
+
+            glUniform3f(glGetUniformLocation(bvShaderProgram, "boundingVolumeColor"), color.r, color.g, color.b); // Set sphere color
+            glm::mat4 model = glm::mat4(1.0f);
+            model = glm::scale(model, glm::vec3(0.0001f, 0.0001f, 0.0001f));
+            int modelLoc = glGetUniformLocation(bvShaderProgram, "model");
+            glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+
+            glBindVertexArray(sphereVAO);
+            glDrawElements(GL_LINES, indices.size(), GL_UNSIGNED_INT, 0);
+            glBindVertexArray(0);
+
+            glDeleteVertexArrays(1, &sphereVAO);
+            glDeleteBuffers(1, &sphereVBO);
+            glDeleteBuffers(1, &sphereEBO);
+        }
+        else if (currentBVType == BVT_PCA_SPHERE) {
+            std::vector<glm::vec3> vertices;
+            std::vector<GLuint> indices;
+
+            // Collect points from the bounding box
+            std::vector<glm::vec3> points = {
+                node->aabbVolume.min,
+                glm::vec3(node->aabbVolume.max.x, node->aabbVolume.min.y, node->aabbVolume.min.z),
+                glm::vec3(node->aabbVolume.min.x, node->aabbVolume.max.y, node->aabbVolume.min.z),
+                glm::vec3(node->aabbVolume.min.x, node->aabbVolume.min.y, node->aabbVolume.max.z),
+                node->aabbVolume.max,
+                glm::vec3(node->aabbVolume.min.x, node->aabbVolume.max.y, node->aabbVolume.max.z),
+                glm::vec3(node->aabbVolume.max.x, node->aabbVolume.min.y, node->aabbVolume.max.z),
+                glm::vec3(node->aabbVolume.max.x, node->aabbVolume.max.y, node->aabbVolume.min.z)
+            };
+
+            Sphere sphere = ComputePCASphere(points);
+            CreateSphereVertices(sphere, vertices, indices);
+
+            GLuint sphereVAO, sphereVBO, sphereEBO;
+            glGenVertexArrays(1, &sphereVAO);
+            glGenBuffers(1, &sphereVBO);
+            glGenBuffers(1, &sphereEBO);
+
+            glBindVertexArray(sphereVAO);
+
+            glBindBuffer(GL_ARRAY_BUFFER, sphereVBO);
+            glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(glm::vec3), &vertices[0], GL_STATIC_DRAW);
+
+            glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, sphereEBO);
+            glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLuint), &indices[0], GL_STATIC_DRAW);
+
+            glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+            glEnableVertexAttribArray(0);
+
+            glUniform3f(glGetUniformLocation(bvShaderProgram, "boundingVolumeColor"), color.r, color.g, color.b); // Set sphere color
+            glm::mat4 model = glm::mat4(1.0f);
+            model = glm::scale(model, glm::vec3(0.0001f, 0.0001f, 0.0001f));
+            int modelLoc = glGetUniformLocation(bvShaderProgram, "model");
+            glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
+
+            glBindVertexArray(sphereVAO);
+            glDrawElements(GL_LINES, indices.size(), GL_UNSIGNED_INT, 0);
+            glBindVertexArray(0);
+
+            glDeleteVertexArrays(1, &sphereVAO);
+            glDeleteBuffers(1, &sphereVBO);
+            glDeleteBuffers(1, &sphereEBO);
+        }
+    }
+    else {
+        DrawBoundingVolumesAtLevel(node->lChild, bvShaderProgram, targetLevel, currentLevel + 1);
+        DrawBoundingVolumesAtLevel(node->rChild, bvShaderProgram, targetLevel, currentLevel + 1);
+    }
+}
+
 int main() {
     const unsigned int SCR_WIDTH = 1920;
     const unsigned int SCR_HEIGHT = 1080;
@@ -742,6 +961,7 @@ int main() {
         if (ImGui::RadioButton("PCA Sphere", currentBVType == BVT_PCA_SPHERE)) {
             currentBVType = BVT_PCA_SPHERE;
         }
+        ImGui::SliderInt("Tree Level", &currentLevel, 0, 7); // Adjust the maximum level as needed
         ImGui::End();
 
         glClearColor(0.4f, 0.4f, 0.4f, 1.f);
@@ -792,19 +1012,8 @@ int main() {
         glUniformMatrix4fv(viewLoc, 1, GL_FALSE, glm::value_ptr(view));
         glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projection));
 
-        // Draw bounding volumes based on the selected type
-        if (currentBVType == BVT_AABB) {
-            DrawAABB(root, bvShaderProgram);
-        }
-        else if (currentBVType == BVT_RITTER_SPHERE) {
-            DrawRitterSphere(root, bvShaderProgram);
-        }
-        else if (currentBVType == BVT_LARSSON_SPHERE) {
-            DrawLarssonSphere(root, bvShaderProgram);
-        }
-        else if (currentBVType == BVT_PCA_SPHERE) {
-            DrawPCASphere(root, bvShaderProgram);
-        }
+        // Draw bounding volumes based on the selected type and level
+        DrawBoundingVolumesAtLevel(root, bvShaderProgram, currentLevel);
 
         // Render ImGui
         ImGui::Render();
