@@ -65,16 +65,17 @@ struct AABB {
     glm::vec3 max;
 };
 
-struct Sphere {
+struct BoundingSphere {
     glm::vec3 center;
     float radius;
 };
 
-// Define the Object structure
 struct Object {
     AABB boundingBox;
-    std::vector<glm::vec3> vertices; // Store the vertices for more accurate bounding volume calculation
-    // Other object data...
+    BoundingSphere ritterSphere;
+    BoundingSphere larssonSphere;
+    BoundingSphere pcaSphere;
+    objl::Mesh mesh; // Store the mesh for access to vertices
 };
 
 std::vector<Object> objects;
@@ -83,7 +84,10 @@ enum NodeType { INTERNAL, LEAF };
 struct TreeNode {
     NodeType type;
     AABB aabbVolume;
-    GLuint test1, test2, test3;
+    BoundingSphere ritterVolume;
+    BoundingSphere larssonVolume;
+    BoundingSphere pcaVolume;
+
     Object* objects; // pointer to objects/BVs that the node represents
     int numObjects; // How many objects in this subtree?
     TreeNode* lChild;
@@ -100,7 +104,11 @@ enum BoundingVolumeType {
 
 BoundingVolumeType currentBVType = BVT_AABB;
 
-AABB ComputeBV(const std::vector<Object>& objects) {
+BoundingSphere ComputeRitterSphere(const std::vector<Object>& objects);
+BoundingSphere ComputeLarssonSphere(const std::vector<Object>& objects);
+BoundingSphere ComputePCASphere(const std::vector<Object>& objects);
+
+AABB ComputeAABB(const std::vector<Object>& objects) {
     AABB bv;
     bv.min = glm::vec3(std::numeric_limits<float>::max());
     bv.max = glm::vec3(std::numeric_limits<float>::lowest());
@@ -111,6 +119,19 @@ AABB ComputeBV(const std::vector<Object>& objects) {
     }
 
     return bv;
+}
+
+BoundingSphere ComputeBV(const std::vector<Object>& objects, BoundingVolumeType bvType) {
+    switch (bvType) {
+    case BVT_RITTER_SPHERE:
+        return ComputeRitterSphere(objects);
+    case BVT_LARSSON_SPHERE:
+        return ComputeLarssonSphere(objects);
+    case BVT_PCA_SPHERE:
+        return ComputePCASphere(objects);
+    default:
+        throw std::runtime_error("Unknown Bounding Volume Type");
+    }
 }
 
 int PartitionObjects(std::vector<Object>& objects, int numObjects) {
@@ -125,7 +146,11 @@ int PartitionObjects(std::vector<Object>& objects, int numObjects) {
 }
 
 void TopDownTree(TreeNode* node, std::vector<Object>& objects, int numObjects) {
-    node->aabbVolume = ComputeBV(objects);
+    node->aabbVolume = ComputeAABB(objects);
+    node->ritterVolume = ComputeBV(objects, BVT_RITTER_SPHERE);
+    node->larssonVolume = ComputeBV(objects, BVT_LARSSON_SPHERE);
+    node->pcaVolume = ComputeBV(objects, BVT_PCA_SPHERE);
+
 
     if (numObjects <= MIN_OBJECTS_AT_LEAF) {
         node->type = LEAF;
@@ -184,7 +209,7 @@ void CreateAABBVertices(const AABB& aabb, std::vector<glm::vec3>& vertices, std:
     };
 }
 
-void CreateSphereVertices(Sphere sphere, std::vector<glm::vec3>& vertices, std::vector<GLuint>& indices) {
+void CreateSphereVertices(BoundingSphere sphere, std::vector<glm::vec3>& vertices, std::vector<GLuint>& indices) {
     const unsigned int X_SEGMENTS = 16;
     const unsigned int Y_SEGMENTS = 16;
 
@@ -213,13 +238,20 @@ void CreateSphereVertices(Sphere sphere, std::vector<glm::vec3>& vertices, std::
     }
 }
 
-Sphere ComputeRitterSphere(const std::vector<glm::vec3>& points) {
-    // Step 1: Find the initial sphere
+BoundingSphere ComputeRitterSphere(const std::vector<Object>& objects) {
+    std::vector<glm::vec3> points;
+    for (const auto& obj : objects) {
+        for (const auto& vertex : obj.mesh.Vertices) {
+            points.emplace_back(vertex.Position.X, vertex.Position.Y, vertex.Position.Z);
+        }
+    }
+
+    if (points.empty()) return { glm::vec3(0.0f), 0.0f };
+
     glm::vec3 x = points[0];
     glm::vec3 y = points[0];
     float maxDistSq = 0;
 
-    // Find the point y which is farthest from point x
     for (const auto& p : points) {
         float distSq = glm::distance2(p, x);
         if (distSq > maxDistSq) {
@@ -228,7 +260,6 @@ Sphere ComputeRitterSphere(const std::vector<glm::vec3>& points) {
         }
     }
 
-    // Find the point z which is farthest from point y
     glm::vec3 z = y;
     maxDistSq = 0;
     for (const auto& p : points) {
@@ -239,11 +270,9 @@ Sphere ComputeRitterSphere(const std::vector<glm::vec3>& points) {
         }
     }
 
-    // The initial sphere has the center at the midpoint of y and z
     glm::vec3 center = (y + z) * 0.5f;
     float radius = glm::distance(y, z) * 0.5f;
 
-    // Step 2: Grow the sphere to include all points
     for (const auto& p : points) {
         float dist = glm::distance(center, p);
         if (dist > radius) {
@@ -257,10 +286,16 @@ Sphere ComputeRitterSphere(const std::vector<glm::vec3>& points) {
     return { center, radius };
 }
 
-Sphere ComputeLarssonSphere(const std::vector<glm::vec3>& points) {
+BoundingSphere ComputeLarssonSphere(const std::vector<Object>& objects) {
+    std::vector<glm::vec3> points;
+    for (const auto& obj : objects) {
+        for (const auto& vertex : obj.mesh.Vertices) {
+            points.emplace_back(vertex.Position.X, vertex.Position.Y, vertex.Position.Z);
+        }
+    }
+
     if (points.empty()) return { glm::vec3(0.0f), 0.0f };
 
-    // Calculate the bounding box
     glm::vec3 minPoint = points[0];
     glm::vec3 maxPoint = points[0];
 
@@ -269,11 +304,9 @@ Sphere ComputeLarssonSphere(const std::vector<glm::vec3>& points) {
         maxPoint = glm::max(maxPoint, point);
     }
 
-    // Start with the center of the bounding box
     glm::vec3 center = (minPoint + maxPoint) * 0.5f;
     float radius = 0.0f;
 
-    // Calculate the initial radius
     for (const auto& point : points) {
         float dist = glm::distance(center, point);
         if (dist > radius) {
@@ -281,7 +314,6 @@ Sphere ComputeLarssonSphere(const std::vector<glm::vec3>& points) {
         }
     }
 
-    // Iteratively adjust the sphere to ensure all points are within the sphere
     for (const auto& point : points) {
         float dist = glm::distance(center, point);
         if (dist > radius) {
@@ -295,15 +327,22 @@ Sphere ComputeLarssonSphere(const std::vector<glm::vec3>& points) {
     return { center, radius };
 }
 
-Sphere ComputePCASphere(const std::vector<glm::vec3>& points) {
-    // Compute the mean of the points
+BoundingSphere ComputePCASphere(const std::vector<Object>& objects) {
+    std::vector<glm::vec3> points;
+    for (const auto& obj : objects) {
+        for (const auto& vertex : obj.mesh.Vertices) {
+            points.emplace_back(vertex.Position.X, vertex.Position.Y, vertex.Position.Z);
+        }
+    }
+
+    if (points.empty()) return { glm::vec3(0.0f), 0.0f };
+
     glm::vec3 mean(0.0f);
     for (const auto& p : points) {
         mean += p;
     }
     mean /= static_cast<float>(points.size());
 
-    // Compute the covariance matrix
     glm::mat3 covariance(0.0f);
     for (const auto& p : points) {
         glm::vec3 centered = p - mean;
@@ -319,18 +358,152 @@ Sphere ComputePCASphere(const std::vector<glm::vec3>& points) {
     }
     covariance /= static_cast<float>(points.size());
 
-    // Compute the eigenvalues and eigenvectors of the covariance matrix
     glm::vec3 eigenvalues;
     glm::mat3 eigenvectors;
-    // Using a simplified power iteration method to find the principal component (largest eigenvector)
-    glm::vec3 v(1.0f, 1.0f, 1.0f); // Initial guess
-    for (int i = 0; i < 10; ++i) { // 10 iterations should be sufficient
+    glm::vec3 v(1.0f, 1.0f, 1.0f);
+    for (int i = 0; i < 10; ++i) {
         v = covariance * v;
         v = glm::normalize(v);
     }
     glm::vec3 principalComponent = v;
 
-    // Project points onto the principal component and find the bounding sphere
+    float minProj = std::numeric_limits<float>::max();
+    float maxProj = std::numeric_limits<float>::lowest();
+    for (const auto& p : points) {
+        float proj = glm::dot(p - mean, principalComponent);
+        minProj = std::min(minProj, proj);
+        maxProj = std::max(maxProj, proj);
+    }
+
+    glm::vec3 center = mean + principalComponent * (minProj + maxProj) * 0.5f;
+    float radius = (maxProj - minProj) * 0.5f;
+
+    return { center, radius };
+}
+
+BoundingSphere ComputeRitterSphere(const objl::Mesh& mesh) {
+    std::vector<glm::vec3> points;
+    for (const auto& vertex : mesh.Vertices) {
+        points.emplace_back(vertex.Position.X, vertex.Position.Y, vertex.Position.Z);
+    }
+
+    if (points.empty()) return { glm::vec3(0.0f), 0.0f };
+
+    glm::vec3 x = points[0];
+    glm::vec3 y = points[0];
+    float maxDistSq = 0;
+
+    for (const auto& p : points) {
+        float distSq = glm::distance2(p, x);
+        if (distSq > maxDistSq) {
+            y = p;
+            maxDistSq = distSq;
+        }
+    }
+
+    glm::vec3 z = y;
+    maxDistSq = 0;
+    for (const auto& p : points) {
+        float distSq = glm::distance2(p, y);
+        if (distSq > maxDistSq) {
+            z = p;
+            maxDistSq = distSq;
+        }
+    }
+
+    glm::vec3 center = (y + z) * 0.5f;
+    float radius = glm::distance(y, z) * 0.5f;
+
+    for (const auto& p : points) {
+        float dist = glm::distance(center, p);
+        if (dist > radius) {
+            float newRadius = (radius + dist) * 0.5f;
+            float k = (newRadius - radius) / dist;
+            radius = newRadius;
+            center += k * (p - center);
+        }
+    }
+
+    return { center, radius };
+}
+
+BoundingSphere ComputeLarssonSphere(const objl::Mesh& mesh) {
+    std::vector<glm::vec3> points;
+    for (const auto& vertex : mesh.Vertices) {
+        points.emplace_back(vertex.Position.X, vertex.Position.Y, vertex.Position.Z);
+    }
+
+    if (points.empty()) return { glm::vec3(0.0f), 0.0f };
+
+    glm::vec3 minPoint = points[0];
+    glm::vec3 maxPoint = points[0];
+
+    for (const auto& point : points) {
+        minPoint = glm::min(minPoint, point);
+        maxPoint = glm::max(maxPoint, point);
+    }
+
+    glm::vec3 center = (minPoint + maxPoint) * 0.5f;
+    float radius = 0.0f;
+
+    for (const auto& point : points) {
+        float dist = glm::distance(center, point);
+        if (dist > radius) {
+            radius = dist;
+        }
+    }
+
+    for (const auto& point : points) {
+        float dist = glm::distance(center, point);
+        if (dist > radius) {
+            float newRadius = (radius + dist) * 0.5f;
+            float k = (newRadius - radius) / dist;
+            radius = newRadius;
+            center += k * (point - center);
+        }
+    }
+
+    return { center, radius };
+}
+
+BoundingSphere ComputePCASphere(const objl::Mesh& mesh) {
+    std::vector<glm::vec3> points;
+    for (const auto& vertex : mesh.Vertices) {
+        points.emplace_back(vertex.Position.X, vertex.Position.Y, vertex.Position.Z);
+    }
+
+    if (points.empty()) return { glm::vec3(0.0f), 0.0f };
+
+    glm::vec3 mean(0.0f);
+    for (const auto& p : points) {
+        mean += p;
+    }
+    mean /= static_cast<float>(points.size());
+
+    glm::mat3 covariance(0.0f);
+    for (const auto& p : points) {
+        glm::vec3 centered = p - mean;
+        covariance[0][0] += centered.x * centered.x;
+        covariance[0][1] += centered.x * centered.y;
+        covariance[0][2] += centered.x * centered.z;
+        covariance[1][0] += centered.y * centered.x;
+        covariance[1][1] += centered.y * centered.y;
+        covariance[1][2] += centered.y * centered.z;
+        covariance[2][0] += centered.z * centered.x;
+        covariance[2][1] += centered.z * centered.y;
+        covariance[2][2] += centered.z * centered.z;
+    }
+    covariance /= static_cast<float>(points.size());
+
+    glm::vec3 eigenvalues;
+    glm::mat3 eigenvectors;
+    glm::vec3 v(1.0f, 1.0f, 1.0f);
+    for (int i = 0; i < 10; ++i) {
+        v = covariance * v;
+        v = glm::normalize(v);
+    }
+    glm::vec3 principalComponent = v;
+
     float minProj = std::numeric_limits<float>::max();
     float maxProj = std::numeric_limits<float>::lowest();
     for (const auto& p : points) {
@@ -352,9 +525,12 @@ void loadModel(const std::string& path, float scale) {
             // Create a new Object for each mesh
             Object obj;
             obj.boundingBox = ComputeAABB(mesh);
-            // Optionally, you can store other mesh-related data in the Object structure
-            // e.g., obj.mesh = mesh;
-           
+            
+            // Calculate bounding spheres using all three methods
+            obj.mesh = mesh;
+            obj.ritterSphere = ComputeRitterSphere(mesh);
+            obj.larssonSphere = ComputeLarssonSphere(mesh);
+            obj.pcaSphere = ComputePCASphere(mesh);
             // Add the object to the vector
             objects.push_back(obj);
 
@@ -466,214 +642,15 @@ void processInput(GLFWwindow* window)
         cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * speed;
 }
 
-void DrawAABB(TreeNode* node, GLuint bvShaderProgram) {
-    if (!node) return;
+int TreeDepth(TreeNode* node) {
+    if (!node) {
+        return 0;
+    }
 
-    std::vector<glm::vec3> vertices;
-    std::vector<GLuint> indices;
-    CreateAABBVertices(node->aabbVolume, vertices, indices);
+    int leftDepth = TreeDepth(node->lChild);
+    int rightDepth = TreeDepth(node->rChild);
 
-    GLuint bboxVAO, bboxVBO, bboxEBO;
-    glGenVertexArrays(1, &bboxVAO);
-    glGenBuffers(1, &bboxVBO);
-    glGenBuffers(1, &bboxEBO);
-
-    glBindVertexArray(bboxVAO);
-
-    glBindBuffer(GL_ARRAY_BUFFER, bboxVBO);
-    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(glm::vec3), &vertices[0], GL_STATIC_DRAW);
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, bboxEBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLuint), &indices[0], GL_STATIC_DRAW);
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-
-    glUniform3f(glGetUniformLocation(bvShaderProgram, "boundingVolumeColor"), 1, 0, 0); // Set AABB color
-    glm::mat4 model = glm::mat4(1.0f);
-    model = glm::scale(model, glm::vec3(0.0001f, 0.0001f, 0.0001f));
-    int modelLoc = glGetUniformLocation(bvShaderProgram, "model");
-    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-
-    glBindVertexArray(bboxVAO);
-    glDrawElements(GL_LINES, indices.size(), GL_UNSIGNED_INT, 0);
-    glBindVertexArray(0);
-
-    glDeleteVertexArrays(1, &bboxVAO);
-    glDeleteBuffers(1, &bboxVBO);
-    glDeleteBuffers(1, &bboxEBO);
-
-    // Recursively draw children
-    DrawAABB(node->lChild, bvShaderProgram);
-    DrawAABB(node->rChild, bvShaderProgram);
-}
-
-void DrawRitterSphere(TreeNode* node, GLuint bvShaderProgram) {
-    if (!node) return;
-
-    std::vector<glm::vec3> vertices;
-    std::vector<GLuint> indices;
-
-    // Collect points from the bounding box
-    std::vector<glm::vec3> points = {
-        node->aabbVolume.min,
-        glm::vec3(node->aabbVolume.max.x, node->aabbVolume.min.y, node->aabbVolume.min.z),
-        glm::vec3(node->aabbVolume.min.x, node->aabbVolume.max.y, node->aabbVolume.min.z),
-        glm::vec3(node->aabbVolume.min.x, node->aabbVolume.min.y, node->aabbVolume.max.z),
-        node->aabbVolume.max,
-        glm::vec3(node->aabbVolume.min.x, node->aabbVolume.max.y, node->aabbVolume.max.z),
-        glm::vec3(node->aabbVolume.max.x, node->aabbVolume.min.y, node->aabbVolume.max.z),
-        glm::vec3(node->aabbVolume.max.x, node->aabbVolume.max.y, node->aabbVolume.min.z)
-    };
-
-    Sphere sphere = ComputeRitterSphere(points);
-    CreateSphereVertices(sphere, vertices, indices);
-
-    GLuint sphereVAO, sphereVBO, sphereEBO;
-    glGenVertexArrays(1, &sphereVAO);
-    glGenBuffers(1, &sphereVBO);
-    glGenBuffers(1, &sphereEBO);
-
-    glBindVertexArray(sphereVAO);
-
-    glBindBuffer(GL_ARRAY_BUFFER, sphereVBO);
-    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(glm::vec3), &vertices[0], GL_STATIC_DRAW);
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, sphereEBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLuint), &indices[0], GL_STATIC_DRAW);
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-
-    glUniform3f(glGetUniformLocation(bvShaderProgram, "boundingVolumeColor"), 1, 0, 0); // Set sphere color
-    glm::mat4 model = glm::mat4(1.0f);
-    model = glm::scale(model, glm::vec3(0.0001f, 0.0001f, 0.0001f));
-    int modelLoc = glGetUniformLocation(bvShaderProgram, "model");
-    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-
-    glBindVertexArray(sphereVAO);
-    glDrawElements(GL_LINES, indices.size(), GL_UNSIGNED_INT, 0);
-    glBindVertexArray(0);
-
-    glDeleteVertexArrays(1, &sphereVAO);
-    glDeleteBuffers(1, &sphereVBO);
-    glDeleteBuffers(1, &sphereEBO);
-
-    // Recursively draw children
-    DrawRitterSphere(node->lChild, bvShaderProgram);
-    DrawRitterSphere(node->rChild, bvShaderProgram);
-}
-
-void DrawLarssonSphere(TreeNode* node, GLuint bvShaderProgram) {
-    if (!node) return;
-
-    std::vector<glm::vec3> vertices;
-    std::vector<GLuint> indices;
-
-    // Collect points from the bounding box
-    std::vector<glm::vec3> points = {
-        node->aabbVolume.min,
-        glm::vec3(node->aabbVolume.max.x, node->aabbVolume.min.y, node->aabbVolume.min.z),
-        glm::vec3(node->aabbVolume.min.x, node->aabbVolume.max.y, node->aabbVolume.min.z),
-        glm::vec3(node->aabbVolume.min.x, node->aabbVolume.min.y, node->aabbVolume.max.z),
-        node->aabbVolume.max,
-        glm::vec3(node->aabbVolume.min.x, node->aabbVolume.max.y, node->aabbVolume.max.z),
-        glm::vec3(node->aabbVolume.max.x, node->aabbVolume.min.y, node->aabbVolume.max.z),
-        glm::vec3(node->aabbVolume.max.x, node->aabbVolume.max.y, node->aabbVolume.min.z)
-    };
-
-    Sphere sphere = ComputeLarssonSphere(points);
-    CreateSphereVertices(sphere, vertices, indices);
-
-    GLuint sphereVAO, sphereVBO, sphereEBO;
-    glGenVertexArrays(1, &sphereVAO);
-    glGenBuffers(1, &sphereVBO);
-    glGenBuffers(1, &sphereEBO);
-
-    glBindVertexArray(sphereVAO);
-
-    glBindBuffer(GL_ARRAY_BUFFER, sphereVBO);
-    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(glm::vec3), &vertices[0], GL_STATIC_DRAW);
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, sphereEBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLuint), &indices[0], GL_STATIC_DRAW);
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-
-    glUniform3f(glGetUniformLocation(bvShaderProgram, "boundingVolumeColor"), 0, 0, 1); // Set sphere color
-    glm::mat4 model = glm::mat4(1.0f);
-    model = glm::scale(model, glm::vec3(0.0001f, 0.0001f, 0.0001f));
-    int modelLoc = glGetUniformLocation(bvShaderProgram, "model");
-    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-
-    glBindVertexArray(sphereVAO);
-    glDrawElements(GL_LINES, indices.size(), GL_UNSIGNED_INT, 0);
-    glBindVertexArray(0);
-
-    glDeleteVertexArrays(1, &sphereVAO);
-    glDeleteBuffers(1, &sphereVBO);
-    glDeleteBuffers(1, &sphereEBO);
-
-    // Recursively draw children
-    DrawLarssonSphere(node->lChild, bvShaderProgram);
-    DrawLarssonSphere(node->rChild, bvShaderProgram);
-}
-
-void DrawPCASphere(TreeNode* node, GLuint bvShaderProgram) {
-    if (!node) return;
-
-    std::vector<glm::vec3> vertices;
-    std::vector<GLuint> indices;
-
-    // Collect points from the bounding box
-    std::vector<glm::vec3> points = {
-        node->aabbVolume.min,
-        glm::vec3(node->aabbVolume.max.x, node->aabbVolume.min.y, node->aabbVolume.min.z),
-        glm::vec3(node->aabbVolume.min.x, node->aabbVolume.max.y, node->aabbVolume.min.z),
-        glm::vec3(node->aabbVolume.min.x, node->aabbVolume.min.y, node->aabbVolume.max.z),
-        node->aabbVolume.max,
-        glm::vec3(node->aabbVolume.min.x, node->aabbVolume.max.y, node->aabbVolume.max.z),
-        glm::vec3(node->aabbVolume.max.x, node->aabbVolume.min.y, node->aabbVolume.max.z),
-        glm::vec3(node->aabbVolume.max.x, node->aabbVolume.max.y, node->aabbVolume.min.z)
-    };
-
-    Sphere sphere = ComputePCASphere(points);
-    CreateSphereVertices(sphere, vertices, indices);
-
-    GLuint sphereVAO, sphereVBO, sphereEBO;
-    glGenVertexArrays(1, &sphereVAO);
-    glGenBuffers(1, &sphereVBO);
-    glGenBuffers(1, &sphereEBO);
-
-    glBindVertexArray(sphereVAO);
-
-    glBindBuffer(GL_ARRAY_BUFFER, sphereVBO);
-    glBufferData(GL_ARRAY_BUFFER, vertices.size() * sizeof(glm::vec3), &vertices[0], GL_STATIC_DRAW);
-
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, sphereEBO);
-    glBufferData(GL_ELEMENT_ARRAY_BUFFER, indices.size() * sizeof(GLuint), &indices[0], GL_STATIC_DRAW);
-
-    glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
-    glEnableVertexAttribArray(0);
-
-    glUniform3f(glGetUniformLocation(bvShaderProgram, "boundingVolumeColor"), 0, 1, 0); // Set sphere color
-    glm::mat4 model = glm::mat4(1.0f);
-    model = glm::scale(model, glm::vec3(0.0001f, 0.0001f, 0.0001f));
-    int modelLoc = glGetUniformLocation(bvShaderProgram, "model");
-    glUniformMatrix4fv(modelLoc, 1, GL_FALSE, glm::value_ptr(model));
-
-    glBindVertexArray(sphereVAO);
-    glDrawElements(GL_LINES, indices.size(), GL_UNSIGNED_INT, 0);
-    glBindVertexArray(0);
-
-    glDeleteVertexArrays(1, &sphereVAO);
-    glDeleteBuffers(1, &sphereVBO);
-    glDeleteBuffers(1, &sphereEBO);
-
-    // Recursively draw children
-    DrawPCASphere(node->lChild, bvShaderProgram);
-    DrawPCASphere(node->rChild, bvShaderProgram);
+    return std::max(leftDepth, rightDepth) + 1;
 }
 
 void DrawBoundingVolumesAtLevel(TreeNode* node, GLuint bvShaderProgram, int targetLevel, int currentLevel = 0) {
@@ -721,20 +698,7 @@ void DrawBoundingVolumesAtLevel(TreeNode* node, GLuint bvShaderProgram, int targ
             std::vector<glm::vec3> vertices;
             std::vector<GLuint> indices;
 
-            // Collect points from the bounding box
-            std::vector<glm::vec3> points = {
-                node->aabbVolume.min,
-                glm::vec3(node->aabbVolume.max.x, node->aabbVolume.min.y, node->aabbVolume.min.z),
-                glm::vec3(node->aabbVolume.min.x, node->aabbVolume.max.y, node->aabbVolume.min.z),
-                glm::vec3(node->aabbVolume.min.x, node->aabbVolume.min.y, node->aabbVolume.max.z),
-                node->aabbVolume.max,
-                glm::vec3(node->aabbVolume.min.x, node->aabbVolume.max.y, node->aabbVolume.max.z),
-                glm::vec3(node->aabbVolume.max.x, node->aabbVolume.min.y, node->aabbVolume.max.z),
-                glm::vec3(node->aabbVolume.max.x, node->aabbVolume.max.y, node->aabbVolume.min.z)
-            };
-
-            Sphere sphere = ComputeRitterSphere(points);
-            CreateSphereVertices(sphere, vertices, indices);
+            CreateSphereVertices(node->ritterVolume, vertices, indices);
 
             GLuint sphereVAO, sphereVBO, sphereEBO;
             glGenVertexArrays(1, &sphereVAO);
@@ -770,20 +734,7 @@ void DrawBoundingVolumesAtLevel(TreeNode* node, GLuint bvShaderProgram, int targ
             std::vector<glm::vec3> vertices;
             std::vector<GLuint> indices;
 
-            // Collect points from the bounding box
-            std::vector<glm::vec3> points = {
-                node->aabbVolume.min,
-                glm::vec3(node->aabbVolume.max.x, node->aabbVolume.min.y, node->aabbVolume.min.z),
-                glm::vec3(node->aabbVolume.min.x, node->aabbVolume.max.y, node->aabbVolume.min.z),
-                glm::vec3(node->aabbVolume.min.x, node->aabbVolume.min.y, node->aabbVolume.max.z),
-                node->aabbVolume.max,
-                glm::vec3(node->aabbVolume.min.x, node->aabbVolume.max.y, node->aabbVolume.max.z),
-                glm::vec3(node->aabbVolume.max.x, node->aabbVolume.min.y, node->aabbVolume.max.z),
-                glm::vec3(node->aabbVolume.max.x, node->aabbVolume.max.y, node->aabbVolume.min.z)
-            };
-
-            Sphere sphere = ComputeLarssonSphere(points);
-            CreateSphereVertices(sphere, vertices, indices);
+            CreateSphereVertices(node->larssonVolume, vertices, indices);
 
             GLuint sphereVAO, sphereVBO, sphereEBO;
             glGenVertexArrays(1, &sphereVAO);
@@ -819,20 +770,8 @@ void DrawBoundingVolumesAtLevel(TreeNode* node, GLuint bvShaderProgram, int targ
             std::vector<glm::vec3> vertices;
             std::vector<GLuint> indices;
 
-            // Collect points from the bounding box
-            std::vector<glm::vec3> points = {
-                node->aabbVolume.min,
-                glm::vec3(node->aabbVolume.max.x, node->aabbVolume.min.y, node->aabbVolume.min.z),
-                glm::vec3(node->aabbVolume.min.x, node->aabbVolume.max.y, node->aabbVolume.min.z),
-                glm::vec3(node->aabbVolume.min.x, node->aabbVolume.min.y, node->aabbVolume.max.z),
-                node->aabbVolume.max,
-                glm::vec3(node->aabbVolume.min.x, node->aabbVolume.max.y, node->aabbVolume.max.z),
-                glm::vec3(node->aabbVolume.max.x, node->aabbVolume.min.y, node->aabbVolume.max.z),
-                glm::vec3(node->aabbVolume.max.x, node->aabbVolume.max.y, node->aabbVolume.min.z)
-            };
-
-            Sphere sphere = ComputePCASphere(points);
-            CreateSphereVertices(sphere, vertices, indices);
+            
+            CreateSphereVertices(node->pcaVolume, vertices, indices);
 
             GLuint sphereVAO, sphereVBO, sphereEBO;
             glGenVertexArrays(1, &sphereVAO);
@@ -946,6 +885,8 @@ int main() {
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
+        int maxD = TreeDepth(root);
+
         // ImGui interface
         ImGui::Begin("Bounding Volume");
         ImGui::Text("Choose Bounding Volume Type:");
@@ -961,7 +902,7 @@ int main() {
         if (ImGui::RadioButton("PCA Sphere", currentBVType == BVT_PCA_SPHERE)) {
             currentBVType = BVT_PCA_SPHERE;
         }
-        ImGui::SliderInt("Tree Level", &currentLevel, 0, 7); // Adjust the maximum level as needed
+        ImGui::SliderInt("Tree Level", &currentLevel, 0, std::min(maxD-1,7)); // Adjust the maximum level as needed
         ImGui::End();
 
         glClearColor(0.4f, 0.4f, 0.4f, 1.f);

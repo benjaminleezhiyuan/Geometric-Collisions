@@ -18,7 +18,7 @@ struct Triangle
     glm::vec3 v3;
 };
 
-struct Sphere
+struct BoundingSphere
 {
     glm::vec3 position;
     float radius;
