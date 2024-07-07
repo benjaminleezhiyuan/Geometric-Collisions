@@ -134,18 +134,33 @@ BoundingSphere ComputeBV(const std::vector<Object>& objects, BoundingVolumeType 
     }
 }
 
-int PartitionObjects(std::vector<Object>& objects, int numObjects) {
-    // Here you can choose a heuristic to split the objects
-    // For simplicity, we'll just split them in half
-    int k = numObjects / 2;
-    std::nth_element(objects.begin(), objects.begin() + k, objects.end(), [](const Object& a, const Object& b) {
-        return a.boundingBox.min.x < b.boundingBox.min.x; // Example splitting axis
-        });
+int PartitionObjects(std::vector<Object>& objects, int numObjects, int depth, int axis, float splitRatio = 0.5f) {
+    if (numObjects <= 1) {
+        return 0;
+    }
+
+    int k = static_cast<int>(numObjects * splitRatio); // Default is splitRatio = 0.5 for balanced split
+
+    if (axis == 0) {
+        std::nth_element(objects.begin(), objects.begin() + k, objects.end(), [](const Object& a, const Object& b) {
+            return a.boundingBox.min.x < b.boundingBox.min.x;
+            });
+    }
+    else if (axis == 1) {
+        std::nth_element(objects.begin(), objects.begin() + k, objects.end(), [](const Object& a, const Object& b) {
+            return a.boundingBox.min.y < b.boundingBox.min.y;
+            });
+    }
+    else {
+        std::nth_element(objects.begin(), objects.begin() + k, objects.end(), [](const Object& a, const Object& b) {
+            return a.boundingBox.min.z < b.boundingBox.min.z;
+            });
+    }
 
     return k;
 }
 
-void TopDownTree(TreeNode* node, std::vector<Object>& objects, int numObjects) {
+void TopDownTree(TreeNode* node, std::vector<Object>& objects, int numObjects, int depth) {
     node->aabbVolume = ComputeAABB(objects);
     node->ritterVolume = ComputeBV(objects, BVT_RITTER_SPHERE);
     node->larssonVolume = ComputeBV(objects, BVT_LARSSON_SPHERE);
@@ -161,7 +176,8 @@ void TopDownTree(TreeNode* node, std::vector<Object>& objects, int numObjects) {
     }
     else {
         node->type = INTERNAL;
-        int k = PartitionObjects(objects, numObjects);
+        int axis = depth % 3; // Alternate between x, y, and z axes
+        int k = PartitionObjects(objects, numObjects, depth, axis);
 
         node->lChild = new TreeNode();
         node->rChild = new TreeNode();
@@ -169,8 +185,8 @@ void TopDownTree(TreeNode* node, std::vector<Object>& objects, int numObjects) {
         std::vector<Object> leftObjects(objects.begin(), objects.begin() + k);
         std::vector<Object> rightObjects(objects.begin() + k, objects.end());
 
-        TopDownTree(node->lChild, leftObjects, k);
-        TopDownTree(node->rChild, rightObjects, numObjects - k);
+        TopDownTree(node->lChild, leftObjects, k, depth + 1);
+        TopDownTree(node->rChild, rightObjects, numObjects - k, depth + 1);
     }
 }
 
@@ -860,7 +876,7 @@ int main() {
     TreeNode* root = new TreeNode();
 
     // Build the BVH
-    TopDownTree(root, objects, objects.size());
+    TopDownTree(root, objects, objects.size(),0);
 
     // Enable depth test
     glEnable(GL_DEPTH_TEST);
