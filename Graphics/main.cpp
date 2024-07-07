@@ -24,8 +24,6 @@ GLFWwindow* window;
 GLuint shaderProgram;
 GLuint bvShaderProgram;
 
-int currentLevel = 0;
-
 std::vector<glm::vec3> levelColors = {
     {1.0f, 0.0f, 0.0f}, // Red
     {0.0f, 1.0f, 0.0f}, // Green
@@ -81,6 +79,38 @@ struct Object {
 std::vector<Object> objects;
 enum NodeType { INTERNAL, LEAF };
 
+AABB MergeAABB(const AABB& a, const AABB& b) {
+    AABB result;
+    result.min = glm::min(a.min, b.min);
+    result.max = glm::max(a.max, b.max);
+    return result;
+}
+
+BoundingSphere MergeBoundingSpheres(const BoundingSphere& a, const BoundingSphere& b) {
+    glm::vec3 d = b.center - a.center;
+    float dist = glm::length(d);
+
+    if (dist + b.radius <= a.radius) {
+        // Sphere b is entirely within sphere a
+        return a;
+    }
+
+    if (dist + a.radius <= b.radius) {
+        // Sphere a is entirely within sphere b
+        return b;
+    }
+
+    // Otherwise, compute the new sphere that minimally bounds both spheres
+    float newRadius = (dist + a.radius + b.radius) * 0.5f;
+    glm::vec3 newCenter = a.center;
+
+    if (dist > 0.0f) {
+        newCenter += d * ((newRadius - a.radius) / dist);
+    }
+
+    return { newCenter, newRadius };
+}
+
 struct TreeNode {
     NodeType type;
     AABB aabbVolume;
@@ -92,21 +122,81 @@ struct TreeNode {
     int numObjects; // How many objects in this subtree?
     TreeNode* lChild;
     TreeNode* rChild;
+
+    // Constructor for leaf nodes
+    TreeNode() : type(LEAF), objects(nullptr), numObjects(0), lChild(nullptr), rChild(nullptr) {}
+
+    // Constructor for internal nodes
+    TreeNode(TreeNode* left, TreeNode* right) : type(INTERNAL), lChild(left), rChild(right) {
+        // Merge the volumes of left and right children
+        aabbVolume = MergeAABB(left->aabbVolume, right->aabbVolume);
+        ritterVolume = MergeBoundingSpheres(left->ritterVolume, right->ritterVolume);
+        larssonVolume = MergeBoundingSpheres(left->larssonVolume, right->larssonVolume);
+        pcaVolume = MergeBoundingSpheres(left->pcaVolume, right->pcaVolume);
+    }
+};
+
+enum ConstructionMethod {
+    CM_TOP_DOWN,
+    CM_BOTTOM_UP
 };
 
 // Add this enumeration to your global scope
 enum BoundingVolumeType {
+    BVT_NONE,
     BVT_AABB,
     BVT_RITTER_SPHERE,
     BVT_LARSSON_SPHERE,
     BVT_PCA_SPHERE
 };
 
-BoundingVolumeType currentBVType = BVT_AABB;
+ConstructionMethod currentMethod = CM_TOP_DOWN;
+BoundingVolumeType currentBVType = BVT_NONE;
+bool displayAllLevels = false;
+int currentLevel = 0;
 
 BoundingSphere ComputeRitterSphere(const std::vector<Object>& objects);
 BoundingSphere ComputeLarssonSphere(const std::vector<Object>& objects);
 BoundingSphere ComputePCASphere(const std::vector<Object>& objects);
+
+float Volume(const AABB& aabb) {
+    glm::vec3 size = aabb.max - aabb.min;
+    return size.x * size.y * size.z;
+}
+
+void FindNodesToMerge(std::vector<TreeNode*>& nodes, TreeNode*& first, TreeNode*& second) {
+    float minIncrease = std::numeric_limits<float>::max();
+    int firstIndex = -1;
+    int secondIndex = -1;
+
+    for (size_t i = 0; i < nodes.size(); ++i) {
+        for (size_t j = i + 1; j < nodes.size(); ++j) {
+            AABB mergedAABB = MergeAABB(nodes[i]->aabbVolume, nodes[j]->aabbVolume);
+            float increase = Volume(mergedAABB) - Volume(nodes[i]->aabbVolume) - Volume(nodes[j]->aabbVolume);
+
+            if (increase < minIncrease) {
+                minIncrease = increase;
+                firstIndex = i;
+                secondIndex = j;
+            }
+        }
+    }
+
+    first = nodes[firstIndex];
+    second = nodes[secondIndex];
+    nodes.erase(nodes.begin() + secondIndex); // Erase the second node first
+    nodes.erase(nodes.begin() + firstIndex);  // Then erase the first node
+}
+
+TreeNode* BottomUpTree(std::vector<TreeNode*>& nodes) {
+    while (nodes.size() > 1) {
+        TreeNode* first, * second;
+        FindNodesToMerge(nodes, first, second);
+        TreeNode* parent = new TreeNode(first, second);
+        nodes.push_back(parent);
+    }
+    return nodes[0]; // return the root node
+}
 
 AABB ComputeAABB(const std::vector<Object>& objects) {
     AABB bv;
@@ -132,6 +222,21 @@ BoundingSphere ComputeBV(const std::vector<Object>& objects, BoundingVolumeType 
     default:
         throw std::runtime_error("Unknown Bounding Volume Type");
     }
+}
+
+std::vector<TreeNode*> InitializeLeafNodes(const std::vector<Object>& objects) {
+    std::vector<TreeNode*> nodes;
+    for (const auto& obj : objects) {
+        TreeNode* node = new TreeNode();
+        node->aabbVolume = obj.boundingBox;
+        node->ritterVolume = obj.ritterSphere;
+        node->larssonVolume = obj.larssonSphere;
+        node->pcaVolume = obj.pcaSphere;
+        node->objects = const_cast<Object*>(&obj); // Leaf nodes contain the actual objects
+        node->numObjects = 1;
+        nodes.push_back(node);
+    }
+    return nodes;
 }
 
 int PartitionObjects(std::vector<Object>& objects, int numObjects, int depth, int axis, float splitRatio = 0.5f) {
@@ -669,12 +774,12 @@ int TreeDepth(TreeNode* node) {
     return std::max(leftDepth, rightDepth) + 1;
 }
 
-void DrawBoundingVolumesAtLevel(TreeNode* node, GLuint bvShaderProgram, int targetLevel, int currentLevel = 0) {
+void DrawBoundingVolumes(TreeNode* node, GLuint bvShaderProgram, bool drawAllLevels, int targetLevel, int currentLevel = 0) {
     if (!node) return;
 
     glm::vec3 color = levelColors[currentLevel % levelColors.size()];
 
-    if (currentLevel == targetLevel) {
+    if (drawAllLevels || currentLevel == targetLevel) {
         if (currentBVType == BVT_AABB) {
             std::vector<glm::vec3> vertices;
             std::vector<GLuint> indices;
@@ -786,7 +891,6 @@ void DrawBoundingVolumesAtLevel(TreeNode* node, GLuint bvShaderProgram, int targ
             std::vector<glm::vec3> vertices;
             std::vector<GLuint> indices;
 
-            
             CreateSphereVertices(node->pcaVolume, vertices, indices);
 
             GLuint sphereVAO, sphereVBO, sphereEBO;
@@ -820,9 +924,11 @@ void DrawBoundingVolumesAtLevel(TreeNode* node, GLuint bvShaderProgram, int targ
             glDeleteBuffers(1, &sphereEBO);
         }
     }
-    else {
-        DrawBoundingVolumesAtLevel(node->lChild, bvShaderProgram, targetLevel, currentLevel + 1);
-        DrawBoundingVolumesAtLevel(node->rChild, bvShaderProgram, targetLevel, currentLevel + 1);
+
+    // Continue with children if not at target level or drawing all levels
+    if (drawAllLevels || currentLevel != targetLevel) {
+        DrawBoundingVolumes(node->lChild, bvShaderProgram, drawAllLevels, targetLevel, currentLevel + 1);
+        DrawBoundingVolumes(node->rChild, bvShaderProgram, drawAllLevels, targetLevel, currentLevel + 1);
     }
 }
 
@@ -872,11 +978,16 @@ int main() {
     loadModelsFromDirectory("../Assets/power6/part_a", 0.0001f);
     loadModelsFromDirectory("../Assets/power6/part_b", 0.0001f);
 
-    // Root node of the BVH
-    TreeNode* root = new TreeNode();
+    // Root nodes of the BVH
+    TreeNode* topRoot = new TreeNode();
+    TreeNode* botRoot = nullptr;
 
-    // Build the BVH
-    TopDownTree(root, objects, objects.size(),0);
+    // Build the Top-Down BVH
+    TopDownTree(topRoot, objects, objects.size(), 0);
+
+    // Build the Bottom-Up BVH
+    std::vector<TreeNode*> leafNodes = InitializeLeafNodes(objects);
+    botRoot = BottomUpTree(leafNodes);
 
     // Enable depth test
     glEnable(GL_DEPTH_TEST);
@@ -901,24 +1012,35 @@ int main() {
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        int maxD = TreeDepth(root);
+        int maxD = (currentMethod == CM_TOP_DOWN) ? TreeDepth(topRoot) : TreeDepth(botRoot);
 
         // ImGui interface
         ImGui::Begin("Bounding Volume");
-        ImGui::Text("Choose Bounding Volume Type:");
-        if (ImGui::RadioButton("AABB", currentBVType == BVT_AABB)) {
-            currentBVType = BVT_AABB;
+
+        // Radio buttons for root selection
+        ImGui::Text("Choose Root:");
+        if (ImGui::RadioButton("Top-Down", currentMethod == CM_TOP_DOWN)) {
+            currentMethod = CM_TOP_DOWN;
         }
-        if (ImGui::RadioButton("Ritter Sphere", currentBVType == BVT_RITTER_SPHERE)) {
-            currentBVType = BVT_RITTER_SPHERE;
+        if (ImGui::RadioButton("Bottom-Up", currentMethod == CM_BOTTOM_UP)) {
+            currentMethod = CM_BOTTOM_UP;
         }
-        if (ImGui::RadioButton("Larsson Sphere", currentBVType == BVT_LARSSON_SPHERE)) {
-            currentBVType = BVT_LARSSON_SPHERE;
+
+       
+        ImGui::Text("Bounding Volume Type:");
+        const char* bvItems[] = { "None", "AABB", "Ritter Sphere", "Larsson Sphere", "PCA Sphere" };
+        static int bvItem = 0; // default to "None"
+        if (ImGui::Combo("##BVType", &bvItem, bvItems, IM_ARRAYSIZE(bvItems))) {
+            currentBVType = static_cast<BoundingVolumeType>(bvItem);
         }
-        if (ImGui::RadioButton("PCA Sphere", currentBVType == BVT_PCA_SPHERE)) {
-            currentBVType = BVT_PCA_SPHERE;
-        }
-        ImGui::SliderInt("Tree Level", &currentLevel, 0, std::min(maxD,7)); // Adjust the maximum level as needed
+        
+
+        // Checkbox for displaying all levels
+        ImGui::Checkbox("Display All Levels", &displayAllLevels);
+
+        // Slider for selecting tree level
+        ImGui::SliderInt("Tree Level", &currentLevel, 0, maxD - 1);
+
         ImGui::End();
 
         glClearColor(0.4f, 0.4f, 0.4f, 1.f);
@@ -970,7 +1092,8 @@ int main() {
         glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projection));
 
         // Draw bounding volumes based on the selected type and level
-        DrawBoundingVolumesAtLevel(root, bvShaderProgram, currentLevel);
+        TreeNode* rootToDraw = (currentMethod == CM_TOP_DOWN) ? topRoot : botRoot;
+        DrawBoundingVolumes(rootToDraw, bvShaderProgram, displayAllLevels, currentLevel);
 
         // Render ImGui
         ImGui::Render();
