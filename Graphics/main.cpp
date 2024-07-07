@@ -9,11 +9,12 @@
 #include "imgui_impl_opengl3.h"
 #include <vector>
 #include <iostream>
-#include "classes.h"
 #include "helper.h"
 #include "OBJ_Loader.h"
 #include <limits>
 #include <cmath>
+
+#define MIN_OBJECTS_AT_LEAF 4
 
 GLFWwindow* window;
 
@@ -42,10 +43,105 @@ std::vector<GLuint> VAOs, VBOs, EBOs;
 std::vector<objl::Mesh> meshes;
 std::vector<float> scales;
 
+// Define the AABB structure
+struct AABB {
+    glm::vec3 min;
+    glm::vec3 max;
+};
+
+// Define the Object structure
+struct Object {
+    AABB boundingBox;
+    // Other object data...
+};
+
+std::vector<Object> objects;
+enum NodeType { INTERNAL, LEAF };
+
+struct TreeNode {
+    NodeType type;
+    AABB boundingVolume;
+    Object* objects; // pointer to objects/BVs that the node represents
+    int numObjects; // How many objects in this subtree?
+    TreeNode* lChild;
+    TreeNode* rChild;
+};
+
+AABB ComputeBV(const std::vector<Object>& objects) {
+    AABB bv;
+    bv.min = glm::vec3(std::numeric_limits<float>::max());
+    bv.max = glm::vec3(std::numeric_limits<float>::lowest());
+
+    for (const auto& obj : objects) {
+        bv.min = glm::min(bv.min, obj.boundingBox.min);
+        bv.max = glm::max(bv.max, obj.boundingBox.max);
+    }
+
+    return bv;
+}
+
+int PartitionObjects(std::vector<Object>& objects, int numObjects) {
+    // Here you can choose a heuristic to split the objects
+    // For simplicity, we'll just split them in half
+    int k = numObjects / 2;
+    std::nth_element(objects.begin(), objects.begin() + k, objects.end(), [](const Object& a, const Object& b) {
+        return a.boundingBox.min.x < b.boundingBox.min.x; // Example splitting axis
+        });
+
+    return k;
+}
+
+void TopDownTree(TreeNode* node, std::vector<Object>& objects, int numObjects) {
+    node->boundingVolume = ComputeBV(objects);
+
+    if (numObjects <= MIN_OBJECTS_AT_LEAF) {
+        node->type = LEAF;
+        node->objects = objects.data();
+        node->numObjects = numObjects;
+        node->lChild = nullptr;
+        node->rChild = nullptr;
+    }
+    else {
+        node->type = INTERNAL;
+        int k = PartitionObjects(objects, numObjects);
+
+        node->lChild = new TreeNode();
+        node->rChild = new TreeNode();
+
+        std::vector<Object> leftObjects(objects.begin(), objects.begin() + k);
+        std::vector<Object> rightObjects(objects.begin() + k, objects.end());
+
+        TopDownTree(node->lChild, leftObjects, k);
+        TopDownTree(node->rChild, rightObjects, numObjects - k);
+    }
+}
+
+AABB ComputeAABB(const objl::Mesh& mesh) {
+    AABB aabb;
+    aabb.min = glm::vec3(std::numeric_limits<float>::max());
+    aabb.max = glm::vec3(std::numeric_limits<float>::lowest());
+
+    for (const auto& vertex : mesh.Vertices) {
+        aabb.min = glm::min(aabb.min, glm::vec3(vertex.Position.X, vertex.Position.Y, vertex.Position.Z));
+        aabb.max = glm::max(aabb.max, glm::vec3(vertex.Position.X, vertex.Position.Y, vertex.Position.Z));
+    }
+
+    return aabb;
+}
+
 void loadModel(const std::string& path, float scale) {
     objl::Loader loader;
     if (loader.LoadFile(path)) {
         for (auto& mesh : loader.LoadedMeshes) {
+            // Create a new Object for each mesh
+            Object obj;
+            obj.boundingBox = ComputeAABB(mesh);
+            // Optionally, you can store other mesh-related data in the Object structure
+            // e.g., obj.mesh = mesh;
+
+            // Add the object to the vector
+            objects.push_back(obj);
+
             meshes.push_back(mesh);
             unsigned int VAO, VBO, EBO;
 
@@ -200,6 +296,11 @@ int main() {
     loadModelsFromDirectory("../Assets/power6/part_a", 0.0001f);
     loadModelsFromDirectory("../Assets/power6/part_b", 0.0001f);
 
+    // Root node of the BVH
+    TreeNode* root = new TreeNode();
+
+    // Build the BVH
+    TopDownTree(root, objects, objects.size());
 
     // Enable depth test
     glEnable(GL_DEPTH_TEST);

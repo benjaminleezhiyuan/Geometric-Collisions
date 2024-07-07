@@ -6,7 +6,6 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <vector>
 #include <iostream>
-#include "classes.h"
 
 extern GLuint shaderProgram;
 extern GLuint bvShaderProgram;
