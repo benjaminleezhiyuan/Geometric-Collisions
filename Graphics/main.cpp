@@ -32,9 +32,9 @@ std::vector<glm::vec3> levelColors = {
     {0.0f, 1.0f, 1.0f}, // Cyan
     {1.0f, 0.0f, 1.0f}, // Magenta
     {1.0f, 0.5f, 0.0f}, // Orange
-    {0.5f, 0.0f, 1.0f}, // Purple
     {0.0f, 0.5f, 0.5f}  // Teal
 };
+
 
 objl::Loader loader;
 
@@ -1060,11 +1060,11 @@ int main() {
     // Load all models from the specified directory with a specific scale
     loadModelsFromDirectory("../Assets/power4/part_a", 0.0001f);
     loadModelsFromDirectory("../Assets/power4/part_b", 0.0001f);
-    loadModelsFromDirectory("../Assets/power5/part_a", 0.0001f);
+    /*loadModelsFromDirectory("../Assets/power5/part_a", 0.0001f);
     loadModelsFromDirectory("../Assets/power5/part_b", 0.0001f);
     loadModelsFromDirectory("../Assets/power5/part_c", 0.0001f);
     loadModelsFromDirectory("../Assets/power6/part_a", 0.0001f);
-    loadModelsFromDirectory("../Assets/power6/part_b", 0.0001f);
+    loadModelsFromDirectory("../Assets/power6/part_b", 0.0001f);*/
 
     // Root nodes of the BVH
     TreeNode* topRoot = new TreeNode();
@@ -1143,7 +1143,7 @@ int main() {
 
         ImGui::End();
 
-        glClearColor(0.4f, 0.4f, 0.4f, 1.f);
+        glClearColor(0.f, 0.f, 0.f, 1.f);
         // Clear screen
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
