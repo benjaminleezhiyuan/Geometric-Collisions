@@ -156,6 +156,15 @@ struct BoundingVolumeCost {
     float relativeVolumeIncrease;
 };
 
+enum SplitMethod {
+    SM_MEDIAN_CENTER,
+    SM_MEDIAN_EXTENT,
+    SM_K_EVEN_SPLITS
+};
+
+SplitMethod currentSplitMethod = SM_MEDIAN_CENTER; // Default split method
+int kSplits = 2; // Default number of even splits
+
 ConstructionMethod currentMethod = CM_TOP_DOWN;
 BoundingVolumeType currentBVType = BVT_NONE;
 bool displayAllLevels = false;
@@ -266,59 +275,107 @@ std::vector<TreeNode*> InitializeLeafNodes(const std::vector<Object>& objects) {
     return nodes;
 }
 
-int PartitionObjects(std::vector<Object>& objects, int numObjects, int depth, int axis, float splitRatio = 0.7f) {
+int PartitionObjects(std::vector<Object>& objects, int axis, SplitMethod splitMethod, int k = 2) {
+    int numObjects = objects.size();
     if (numObjects <= 1) {
         return 0;
     }
 
-    int k = static_cast<int>(numObjects * splitRatio); // Default is splitRatio = 0.5 for balanced split
+    if (splitMethod == SM_MEDIAN_CENTER) {
+        // Sort objects based on the center of their bounding volumes along the given axis
+        if (axis == 0) {
+            std::nth_element(objects.begin(), objects.begin() + numObjects / 2, objects.end(),
+                [](const Object& a, const Object& b) {
+                    return (a.boundingBox.min.x + a.boundingBox.max.x) < (b.boundingBox.min.x + b.boundingBox.max.x);
+                });
+        }
+        else if (axis == 1) {
+            std::nth_element(objects.begin(), objects.begin() + numObjects / 2, objects.end(),
+                [](const Object& a, const Object& b) {
+                    return (a.boundingBox.min.y + a.boundingBox.max.y) < (b.boundingBox.min.y + b.boundingBox.max.y);
+                });
+        }
+        else {
+            std::nth_element(objects.begin(), objects.begin() + numObjects / 2, objects.end(),
+                [](const Object& a, const Object& b) {
+                    return (a.boundingBox.min.z + a.boundingBox.max.z) < (b.boundingBox.min.z + b.boundingBox.max.z);
+                });
+        }
+        return numObjects / 2;
+    }
+    else if (splitMethod == SM_MEDIAN_EXTENT) {
+        // Sort objects based on the extents of their bounding volumes along the given axis
+        if (axis == 0) {
+            std::nth_element(objects.begin(), objects.begin() + numObjects / 2, objects.end(),
+                [](const Object& a, const Object& b) {
+                    return a.boundingBox.max.x < b.boundingBox.max.x;
+                });
+        }
+        else if (axis == 1) {
+            std::nth_element(objects.begin(), objects.begin() + numObjects / 2, objects.end(),
+                [](const Object& a, const Object& b) {
+                    return a.boundingBox.max.y < b.boundingBox.max.y;
+                });
+        }
+        else {
+            std::nth_element(objects.begin(), objects.begin() + numObjects / 2, objects.end(),
+                [](const Object& a, const Object& b) {
+                    return a.boundingBox.max.z < b.boundingBox.max.z;
+                });
+        }
+        return numObjects / 2;
+    }
+    else if (splitMethod == SM_K_EVEN_SPLITS) {
+        int k = static_cast<int>(numObjects * 0.7f); // Default is splitRatio = 0.5 for balanced split
 
-    if (axis == 0) {
-        std::nth_element(objects.begin(), objects.begin() + k, objects.end(), [](const Object& a, const Object& b) {
-            return a.boundingBox.min.x < b.boundingBox.min.x;
-            });
-    }
-    else if (axis == 1) {
-        std::nth_element(objects.begin(), objects.begin() + k, objects.end(), [](const Object& a, const Object& b) {
-            return a.boundingBox.min.y < b.boundingBox.min.y;
-            });
-    }
-    else {
-        std::nth_element(objects.begin(), objects.begin() + k, objects.end(), [](const Object& a, const Object& b) {
-            return a.boundingBox.min.z < b.boundingBox.min.z;
-            });
+        if (axis == 0) {
+            std::nth_element(objects.begin(), objects.begin() + k, objects.end(), [](const Object& a, const Object& b) {
+                return a.boundingBox.min.x < b.boundingBox.min.x;
+                });
+        }
+        else if (axis == 1) {
+            std::nth_element(objects.begin(), objects.begin() + k, objects.end(), [](const Object& a, const Object& b) {
+                return a.boundingBox.min.y < b.boundingBox.min.y;
+                });
+        }
+        else {
+            std::nth_element(objects.begin(), objects.begin() + k, objects.end(), [](const Object& a, const Object& b) {
+                return a.boundingBox.min.z < b.boundingBox.min.z;
+                });
+        }
+
+        return k;
     }
 
-    return k;
+    return numObjects / 2; // Default split point
 }
 
-void TopDownTree(TreeNode* node, std::vector<Object>& objects, int numObjects, int depth, int maxheightV) {
+void TopDownTree(TreeNode* node, std::vector<Object>& objects, int depth, int maxheightV) {
     node->aabbVolume = ComputeAABB(objects);
     node->ritterVolume = ComputeBV(objects, BVT_RITTER_SPHERE);
     node->larssonVolume = ComputeBV(objects, BVT_LARSSON_SPHERE);
     node->pcaVolume = ComputeBV(objects, BVT_PCA_SPHERE);
 
-    // Restrict the depth of the tree to 7
-    if (numObjects <= MIN_OBJECTS_AT_LEAF || (depth >= maxheightV && maxHeight)) {
+    if (objects.size() <= MIN_OBJECTS_AT_LEAF || (depth >= maxheightV && maxHeight)) {
         node->type = LEAF;
         node->objects = objects.data();
-        node->numObjects = numObjects;
+        node->numObjects = objects.size();
         node->lChild = nullptr;
         node->rChild = nullptr;
     }
     else {
         node->type = INTERNAL;
         int axis = depth % 3; // Alternate between x, y, and z axes
-        int k = PartitionObjects(objects, numObjects, depth, axis);
+        int medianIndex = PartitionObjects(objects, axis, currentSplitMethod, kSplits);
 
         node->lChild = new TreeNode();
         node->rChild = new TreeNode();
 
-        std::vector<Object> leftObjects(objects.begin(), objects.begin() + k);
-        std::vector<Object> rightObjects(objects.begin() + k, objects.end());
+        std::vector<Object> leftObjects(objects.begin(), objects.begin() + medianIndex);
+        std::vector<Object> rightObjects(objects.begin() + medianIndex, objects.end());
 
-        TopDownTree(node->lChild, leftObjects, k, depth + 1, maxheightV);
-        TopDownTree(node->rChild, rightObjects, numObjects - k, depth + 1, maxheightV);
+        TopDownTree(node->lChild, leftObjects, depth + 1, maxheightV);
+        TopDownTree(node->rChild, rightObjects, depth + 1, maxheightV);
     }
 }
 
@@ -788,6 +845,10 @@ void processInput(GLFWwindow* window)
         cameraPos -= glm::normalize(glm::cross(cameraFront, cameraUp)) * speed;
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
         cameraPos += glm::normalize(glm::cross(cameraFront, cameraUp)) * speed;
+    if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
+        cameraPos += speed * cameraUp; // Move up
+    if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS || glfwGetKey(window, GLFW_KEY_RIGHT_CONTROL) == GLFW_PRESS)
+        cameraPos -= speed * cameraUp; // Move down
 }
 
 int TreeDepth(TreeNode* node) {
@@ -1010,7 +1071,7 @@ int main() {
     TreeNode* botRoot = nullptr;
 
     // Build the Top-Down BVH
-    TopDownTree(topRoot, objects, objects.size(), 0, maxHeightValue);
+    TopDownTree(topRoot, objects, 0, maxHeightValue);
 
     // Build the Bottom-Up BVH
     std::vector<TreeNode*> leafNodes = InitializeLeafNodes(objects);
@@ -1058,6 +1119,13 @@ int main() {
                 rebuildTree = true; // Set rebuild flag if checkbox state changes
                 maxHeightValue = maxHeight ? 7 : INT_MAX;
             }
+            ImGui::Text("Split Method:");
+            const char* splitItems[] = { "Median of Centers", "Median of Extents", "K Even Splits" };
+            static int splitItem = 0; // Default to "Median of Centers"
+            if (ImGui::Combo("##SplitMethod", &splitItem, splitItems, IM_ARRAYSIZE(splitItems))) {
+                currentSplitMethod = static_cast<SplitMethod>(splitItem);
+                rebuildTree = true; // Set rebuild flag
+            }
         }
 
         ImGui::Text("Bounding Volume Type:");
@@ -1083,7 +1151,7 @@ int main() {
         if (rebuildTree) {
             delete topRoot;
             topRoot = new TreeNode();
-            TopDownTree(topRoot, objects, objects.size(), 0, maxHeightValue);
+            TopDownTree(topRoot, objects, 0, maxHeightValue);
             rebuildTree = false; // Reset the rebuild flag
         }
 
@@ -1104,7 +1172,7 @@ int main() {
         glUniform3f(glGetUniformLocation(shaderProgram, "lightPos"), -50.f, 50.0f, 20.0f);
         glUniform3f(glGetUniformLocation(shaderProgram, "viewPos"), cameraPos.x, cameraPos.y, cameraPos.z);
         glUniform3f(glGetUniformLocation(shaderProgram, "lightColor"), 1.0f, 1.0f, 1.0f);
-        glUniform3f(glGetUniformLocation(shaderProgram, "objectColor"), 1.0f, 0.5f, 0.31f);
+        glUniform3f(glGetUniformLocation(shaderProgram, "objectColor"), 0.537, 0.098, 0.898);
 
         // Draw each loaded model with its corresponding scale
         for (size_t i = 0; i < VAOs.size(); ++i) {

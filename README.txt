@@ -1,8 +1,9 @@
 a.) Launch program using Release Mode. To load models, put them into the Assets folder and use scale of 0.0001f. (See Line 999 in main)
-    Move around using WASD and Right Click drag to move the camera.
+    Move around using WASD, Spacebar to move up, Ctrl to move down and Right Click drag to move the camera.
     I have included powerplant4-powerplant6 in the submission.
     You are able to pick topdown or bottomup construction using the imgui window.
     For Top Down, you have the choice to restrict height to 7 or let it construct until the leaf.
+    You can also change the splitpoint using the drop down menu.
     For both topdown and bottom up, you can change the bounding volume type.
     You can choose to display all the levels of the Tree or you can use the slider to draw specific level.
 
